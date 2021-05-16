@@ -181,7 +181,7 @@ using PointModel = model<
 ```
 `init` meta property is used to assign a default value for a field that is not present in a request.
 
-Of course models can be nested. Let's add an optional color property to the 3d point by first defining a ColorModel property:
+Of course models can be nested. Let's add an optional color property to the 3d point by first defining a ColorModel model:
 
 ```cpp
 using ColorModel = model<
