@@ -131,7 +131,7 @@ struct point
 };
 ```
 Unfortunatelly the above `struct` is not reflectable.
-Because of this serialization/deserialization to/from json, and swagger documentation cannot be automated.
+Because of this, serialization/deserialization to/from json as well as swagger documentation cannot be automated.
 
 Instead of using simple  `struct`s Scymnus uses templates to store meta data about types.
 
