@@ -409,7 +409,7 @@ int main(){
 }
 ```
 ### TODO
-- better HHTP 1.1 support
+- better HTTP 1.1 support
 - memory reclamation policies for buffer_pool (now memory is never released only reused)
 - bug fixing
 - better swagger support e.g. enums
