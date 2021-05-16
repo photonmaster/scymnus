@@ -76,8 +76,8 @@ our service will expose a single GET endpoint. Two path integer parameters named
         .tag("calculator");
 ```
 
-Finally we are starting the webservice
-swagger is accessible here: http://10.0.2.15:9090/api-doc
+Finally we are starting the webservice.
+Swagger is accessible here: http://10.0.2.15:9090/api-doc
 
  ```cpp
     app.listen("10.0.2.15", "9090");
