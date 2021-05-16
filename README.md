@@ -85,7 +85,7 @@ swagger is accessible here: http://10.0.2.15:9090/api-doc
 ```
 }
 
-complete code
+complete code:
 ```cpp
 #include "server/app.hpp"
 
@@ -120,7 +120,7 @@ int main(){
 ```
 ### models
 Let's say that a simple web service must be created for manipulating 3D points.
-The following `struct` looks like a godd candidate for presenting a 3D point:
+The following `struct` looks like a good candidate for presenting a 3D point:
 
 ```cpp
 struct point
