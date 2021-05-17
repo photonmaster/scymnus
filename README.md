@@ -135,7 +135,7 @@ Because of this, serialization/deserialization to/from json as well as swagger d
 
 Instead of using simple  `struct`s Scymnus uses templates to store meta data about types.
 
-So for a 3D point the following using directive is used:
+So for a 3D point the following type alias is used:
 
 ```cpp
 using PointModel = model<
