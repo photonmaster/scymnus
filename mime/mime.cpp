@@ -1,6 +1,6 @@
 #include "mime.hpp"
 
-namespace scymnous {
+namespace scymnus {
 
 const std::map<std::string,std::string> mime_map::mime_map_ = {
     {".323", "text/h323"},
@@ -601,4 +601,4 @@ const std::map<std::string,std::string> mime_map::mime_map_ = {
 };
 
 
-} //namespace scymnous
+} //namespace scymnus

@@ -3,7 +3,7 @@
 #include <map>
 
 
-namespace scymnous {
+namespace scymnus {
 
 class query_string
 {
@@ -89,4 +89,4 @@ private:
 };
 
 
-} //namespace scymnous
+} //namespace scymnus

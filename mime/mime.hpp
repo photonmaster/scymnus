@@ -31,7 +31,7 @@ Copyright (c) 2014 Samuel Neff
             */
 
 
-        namespace scymnous {
+        namespace scymnus {
     class mime_map {
     public:
 
@@ -49,5 +49,5 @@ Copyright (c) 2014 Samuel Neff
 
 
 
-} //namespace scymnous
+} //namespace scymnus
 

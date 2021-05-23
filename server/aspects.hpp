@@ -6,7 +6,7 @@
 
 #include "utilities/utils.hpp"
 
-namespace scymnous
+namespace scymnus
 {
 
 enum class hook_type : uint8_t
@@ -71,4 +71,4 @@ public:
 
 
 
-} //namespace scymnous
+} //namespace scymnus

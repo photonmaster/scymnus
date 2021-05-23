@@ -6,7 +6,7 @@
 #include <iostream>
 #include <thread>
 
-namespace scymnous {
+namespace scymnus {
 
 class buffer_manager {
 public:
@@ -90,4 +90,4 @@ struct buffer_deleter{
     }
 };
 
-} //namespace scymnous
+} //namespace scymnus

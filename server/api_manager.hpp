@@ -8,7 +8,7 @@
 #include "doc_traits.hpp"
 
 
-namespace scymnous {
+namespace scymnus {
 using json = nlohmann::json;
 
 
@@ -16,7 +16,7 @@ class api_manager
 {
 
     struct info_object{
-        std::string title{"Scymnous"};
+        std::string title{"Scymnus"};
         std::string description;
         std::string term_of_service;
         //contact info
@@ -31,7 +31,7 @@ class api_manager
 
 
     info_object info_;
-    std::string host_{"scymnous.gr"};
+    std::string host_{"scymnus.gr"};
     std::string base_path_{"/"};
     std::vector<std::string> schemes_;
     std::vector<std::string> consumes_;
@@ -290,4 +290,4 @@ inline api_manager& api_manager::instance()
 
 
 
-} //namespace scymnous
+} //namespace scymnus

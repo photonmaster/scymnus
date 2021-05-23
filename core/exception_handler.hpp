@@ -2,7 +2,7 @@
 
 #include <functional>
 
-namespace scymnous {
+namespace scymnus {
 
 ///exception  dispacher for handling intenal exception thrown
 
@@ -31,4 +31,4 @@ private:
     std::function<void(context&)> handler_;
 };
 
-} //namespace scymnous
+} //namespace scymnus

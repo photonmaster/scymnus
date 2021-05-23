@@ -8,7 +8,7 @@
 
 #include "core/exception.hpp"
 
-namespace scymnous {
+namespace scymnus {
 
 
 class io_info
@@ -34,4 +34,4 @@ private:
 };
 
 
-} // namespace scymnous
+} // namespace scymnus

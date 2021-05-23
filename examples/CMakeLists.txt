@@ -15,19 +15,19 @@ add_link_options(-nostartfiles)
 #target_include_directories(points PUBLIC ../..)
 
 
-target_link_libraries(points scymnous)
+target_link_libraries(points scymnus)
 target_link_libraries(points ${Boost_LIBRARIES})
 
-target_link_libraries(metadata scymnous)
+target_link_libraries(metadata scymnus)
 target_link_libraries(metadata ${Boost_LIBRARIES})
 
-target_link_libraries(aspects scymnous)
+target_link_libraries(aspects scymnus)
 target_link_libraries(aspects ${Boost_LIBRARIES})
 
 
-target_link_libraries(minimal scymnous)
+target_link_libraries(minimal scymnus)
 target_link_libraries(minimal ${Boost_LIBRARIES})
 
-target_link_libraries(simple scymnous)
+target_link_libraries(simple scymnus)
 target_link_libraries(simple ${Boost_LIBRARIES})
 

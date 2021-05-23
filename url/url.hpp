@@ -12,7 +12,7 @@
 //#include <span> gcc 10
 
 
-namespace scymnous {
+namespace scymnus {
 
 
 class uri_exception : public std::exception

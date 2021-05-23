@@ -7,7 +7,7 @@
 #include <cstdlib>
 
 
-namespace scymnous {
+namespace scymnus {
 namespace tl {
 
 //identity type
@@ -570,4 +570,4 @@ struct any_of<T,P1, Pn...>
 
 
 } //namespace tl
-} //namespace scymnous
+} //namespace scymnus

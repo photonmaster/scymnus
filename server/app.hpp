@@ -6,7 +6,7 @@
 #include "controllers/swagger_controller.hpp"
 
 
-namespace scymnous {
+namespace scymnus {
 
 class app{
 
@@ -47,25 +47,19 @@ public:
     }
 
 
-
-    void match(context& ctx){
-        router_.match(ctx);
-    }
-
-
 private:
 
     app(const app&) = delete;
     app(app&&) = delete;
     app() {
-        route_internal(scymnous::get_swagger_description_controller{});
-        route_internal(scymnous::api_doc_controller{});
-        route_internal(scymnous::swagger_controller_files{});
+        route_internal(scymnus::get_swagger_description_controller{});
+        route_internal(scymnus::api_doc_controller{});
+        route_internal(scymnus::swagger_controller_files{});
     }
 
-    scymnous::http_server<> server_{std::thread::hardware_concurrency()};
+    scymnus::http_server<> server_{std::thread::hardware_concurrency()};
     router router_;
 };
 
 
-} //nameapace scymnous
+} //nameapace scymnus

@@ -1,6 +1,6 @@
 #include "server/app.hpp"
 
-using namespace scymnous;
+using namespace scymnus;
 
 
 ///In this example a minimalistic example of a web service is given
@@ -13,16 +13,16 @@ int main(){
       api_manager::instance().email("your@email.com");
       api_manager::instance().title("Calculator service");
       api_manager::instance().version(0,1);
-      api_manager::instance().host("10.0.2.15:9090");
+      api_manager::instance().host("127.0.0.1:9090");
       api_manager::instance().add_consume_type("aplication/json");
       api_manager::instance().add_produce_type("aplication/json");
       api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+      api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
 
-    /// scymnous::app is a singleton. we are taking a reference to each instance, named app
+    /// scymnus::app is a singleton. we are taking a reference to each instance, named app
     /// that we will be using in the rest of the code
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 
 
 
@@ -40,7 +40,7 @@ int main(){
     /// swagger is accessible here: http://10.0.2.15:9090/api-doc
 
 
-    app.listen("10.0.2.15", "9090");
+    app.listen("127.0.0.1", "9090");
     app.run();
 }
 

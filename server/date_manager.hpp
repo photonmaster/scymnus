@@ -4,7 +4,7 @@
 #include <string>
 
 
-namespace scymnous {
+namespace scymnus {
 
 class date_manager
 {
@@ -39,4 +39,4 @@ private:
     std::string date_ = std::string(30,'\0');
 };
 
-} //namespace scymnous
+} //namespace scymnus

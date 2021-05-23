@@ -31,7 +31,7 @@
 
 
 
-namespace scymnous {
+namespace scymnus {
 
 namespace detail {
 struct tuple_sink {
@@ -158,9 +158,6 @@ class trie {
     friend class router_manager;
 public:
     [[nodiscard]] node* add(std::string url) {
-        //#ifdef TEST_DEBUG
-        //        std::cout << "add(url) starting. head children size:  " << head_.children.size() << std::endl;
-        //#endif
 
         std::vector<std::string> parts;
         boost::trim_if(url, boost::is_any_of("/")); // could also use plain boost::trim
@@ -270,7 +267,6 @@ public:
         for (auto it = std::begin(parts); it != std::end(parts); it++, index++) {
             match_type = NoMatch;
             // iterate on child nodes
-            std::cout << "checking part: " << (*it) << std::endl;
 
             if (wild_card_node){
                 path_parameters.back() = std::string_view{path_parameters.back().data(),path_parameters.back().size() + parts[index].size() + 1};
@@ -402,7 +398,7 @@ public:
 template <class... P>
 class operation {
 public:
-    using parameters_t = scymnous::tl::typelist<P...>;
+    using parameters_t = scymnus::tl::typelist<P...>;
 };
 
 template <class L>
@@ -471,7 +467,7 @@ struct param_visitor<path_param<Name,T>, Path>
             ++counter;
         };
 
-        return scymnous::path::traits<type>::get(ctx.raw_url,counter);
+        return scymnus::path::traits<type>::get(ctx.raw_url,counter);
     }
 };
 
@@ -485,7 +481,7 @@ struct param_visitor<header_param<Name,T>, Path>
     {
         static constexpr const char* name = Name.str();
         using type = T;
-        return scymnous::header::traits<type>::get(ctx.req.headers,name);
+        return scymnus::header::traits<type>::get(ctx.req.headers,name);
     }
 };
 
@@ -497,7 +493,7 @@ struct param_visitor<query_param<Name,T>, Path>
     {
         static constexpr const char* name = Name.str();
         using type = T;
-        return scymnous::query::traits<type>::get(ctx.get_query_string(),name);
+        return scymnus::query::traits<type>::get(ctx.get_query_string(),name);
     }
 };
 
@@ -762,30 +758,26 @@ class router {
 public:
 
     router() = default;
-    void match(context& ctx){
+
+    void exec(context& ctx){
         try {
 
 #ifdef TEST_DEBUG
             std::cout << "match called in thread:" << std::this_thread::get_id() << std::endl;
-            std::cout << "about to match method: " << scymnous::to_string(ctx.method) << std::endl;
+            std::cout << "about to match method: " << scymnus::to_string(ctx.method) << std::endl;
             std::cout << "index is:" << (size_t)ctx.method << std::endl;
 #endif
 
             auto match_data =  method_data_[ctx.method].trie_.match(ctx.url.path());
 
-
-            if (!match_data.first){
+            if (!match_data.first || !method_data_[ctx.method].controllers_.count(match_data.first)){
                 ctx.res.status_code = 404;
+                ctx.end();
             }
             else {
-                if (method_data_[ctx.method].controllers_.count(match_data.first)){
                     ctx.path_details = std::move(match_data.second);
                     method_data_[ctx.method].controllers_.at(match_data.first)(ctx);
-                }
-                else {
-                    std::cout << "controller not found" << std::endl;
-                    ctx.res.status_code = 404;
-                }
+
             }
         }
 
@@ -821,7 +813,7 @@ private:
         std::string path = return_type::path.str();
 
         if constexpr (std::tuple_size_v<path_parameters>){
-            scymnous::for_each(path_parameters{}, [&path](const auto& v){
+            scymnus::for_each(path_parameters{}, [&path](const auto& v){
                 std::string str = "{" + std::string(v.name) + "}";
 
                 if constexpr (is_segment_param_v<typename std::remove_cvref_t<decltype(v)>>){
@@ -944,7 +936,7 @@ private:
         std::string path = return_type::path.str();
 
         if constexpr (std::tuple_size_v<path_parameters>){
-            scymnous::for_each(path_parameters{}, [&path](const auto& v){
+            scymnus::for_each(path_parameters{}, [&path](const auto& v){
                 std::string str = "{" + std::string(v.name) + "}";
 
                 if constexpr (is_segment_param_v<typename std::remove_cvref_t<decltype(v)>>){
@@ -978,12 +970,12 @@ private:
                 if constexpr (std::remove_cvref_t<decltype(arg)>::hook == hook_type::before)
                     return  std::tuple<decltype(arg)>{arg};
                 else
-                return std::tuple<>{};
+                    return std::tuple<>{};
             }(t)...);
         }, aspects);
 
 
-       //get after aspects
+        //get after aspects
         auto after_aspects = std::apply([]( auto&...t) {
 
             return std::tuple_cat([](auto& arg){
@@ -1003,19 +995,19 @@ private:
             ctx.patterned_url = patterned_url;
 
             //execute before aspects
-   //         if constexpr (std::tuple_size<decltype(before_aspects)>::value){
-                for_each(before_aspects, [&](auto& a){
+            //         if constexpr (std::tuple_size<decltype(before_aspects)>::value){
+            for_each(before_aspects, [&](auto& a){
 
-                    using aspect_arguments = tl::remove_if<is_context,ct::args_t<std::decay_t<decltype(a)>, operation>, operation<>>;
-                    constexpr bool has_context =  tl::contains_type<context&, ct::args_t<std::decay_t<decltype(a)>, operation>>::value;
+                using aspect_arguments = tl::remove_if<is_context,ct::args_t<std::decay_t<decltype(a)>, operation>, operation<>>;
+                constexpr bool has_context =  tl::contains_type<context&, ct::args_t<std::decay_t<decltype(a)>, operation>>::value;
 
-                    using return_type = ct::return_type_t<F>;
-                    constexpr  meta::ct_string p = meta::ct_string(return_type::path);
+                using return_type = ct::return_type_t<F>;
+                constexpr  meta::ct_string p = meta::ct_string(return_type::path);
 
-                    using aspect_return_type =
-                        ct::return_type_t<std::decay_t<decltype(a)>>;
-                    aspect_unpacker<has_context, return_type, aspect_arguments>::execute(a,ctx);
-                });
+                using aspect_return_type =
+                    ct::return_type_t<std::decay_t<decltype(a)>>;
+                aspect_unpacker<has_context, return_type, aspect_arguments>::execute(a,ctx);
+            });
             //}
 
             unpacker<typename designated_types::parameters_t>::execute(f,ctx);
@@ -1075,4 +1067,4 @@ private:
 
 };
 
-}  // namespace scymnous
+}  // namespace scymnus

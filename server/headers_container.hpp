@@ -8,7 +8,7 @@
 #include <iostream>
 
 
-namespace scymnous
+namespace scymnus
 {
 
 template<class... Ts> struct overload : Ts...
@@ -316,7 +316,7 @@ inline  bool insensitive_comp(const message_data_t& lhs, const message_data_t& r
 
 
 
-//for responses
+
 inline  bool iequals(const std::string& lhs, const std::string&  rhs)
 {
 
@@ -426,7 +426,7 @@ struct ci_hash
 
 using res_headers = std::unordered_multimap<std::string, std::string, ci_hash, insensitive_compare>;
 
-} //namespace scymnous
+} //namespace scymnus
 
 
 

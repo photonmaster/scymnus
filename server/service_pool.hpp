@@ -10,7 +10,7 @@
 
 #include "service_pool_manager.hpp"
 
-namespace scymnous
+namespace scymnus
 {
 
 class service_pool{
@@ -51,7 +51,7 @@ public:
                             }
                         } catch(std::exception& e)
                         {
-                            std::cout << "An uncaught exception occurred: " << e.what();
+                            std::cout << "An uncaught exception occurred: " << e.what() << std::endl;
                         }
                     }
 
@@ -94,4 +94,4 @@ private:
     //boost::asio::signal_set signals_;
 };
 
-} //namespace scymnous
+} //namespace scymnus

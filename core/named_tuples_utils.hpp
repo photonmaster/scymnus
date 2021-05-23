@@ -34,7 +34,7 @@ struct adl_serializer<std::optional<T>> {
 }
 
 
-namespace scymnous {
+namespace scymnus {
 
 using json = nlohmann::json;
 
@@ -63,7 +63,7 @@ void from_json(const json& j, NamedTuple& p) {
         if constexpr (is_optional_v<type>){
             if (!j.contains(f.name)){
                 using nested_type = type::value_type;
-                if constexpr (scymnous::has_type<init<nested_type>, properties>::value){
+                if constexpr (scymnus::has_type<init<nested_type>, properties>::value){
 
                     v = std::get<init<nested_type>>(f.properties).value();
                 }
@@ -78,4 +78,4 @@ void from_json(const json& j, NamedTuple& p) {
         }
     });
 }
-}// namespace scymnous
+}// namespace scymnus

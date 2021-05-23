@@ -7,7 +7,7 @@
 
 
 //enumeration
-namespace scymnous
+namespace scymnus
 {
 
 template <class T,class... sl> struct enumeration
@@ -85,4 +85,4 @@ private:
 };
 
 
-} //namespace scymnous
+} //namespace scymnus

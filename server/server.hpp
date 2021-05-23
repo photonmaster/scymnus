@@ -10,7 +10,7 @@
 #include "connection.hpp"
 
 
-namespace scymnous {
+namespace scymnus {
 
 template<class service_pool_policy = service_pool>
 class http_server {
@@ -86,4 +86,4 @@ private:
 
 };
 
-} //namespace scymnous
+} //namespace scymnus

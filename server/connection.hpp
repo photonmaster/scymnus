@@ -11,7 +11,10 @@
 #include "date_manager.hpp"
 
 
-namespace scymnous
+
+
+
+namespace scymnus
 {
 
 namespace detail{
@@ -54,9 +57,9 @@ struct buffer_state
 };
 
 
+
 class connection
 {
-    //TODO: cleanup context
     context ctx_;
     void* current_buffer;
 public:
@@ -69,7 +72,6 @@ public:
 #endif
 
     }
-
 
     ~connection()
     {
@@ -86,8 +88,9 @@ public:
     void start(){
         current_buffer =  (buffer_manager::get().allocate());
         in_buffers_.emplace_back( static_cast<char*>(current_buffer));
-
         bs_.watermark = static_cast<char*>(current_buffer);
+
+
 #ifdef TEST_DEBUG
         std::cout << "read called in thread:" << std::this_thread::get_id() << std::endl;
 #endif
@@ -95,8 +98,8 @@ public:
     }
 
     void read(){
-
-        if (bs_.capacity < 128){
+        //TODO: check this
+        if (bs_.capacity < 1){
             current_buffer =  (buffer_manager::get().allocate());
             in_buffers_.emplace_back( static_cast<char*>(current_buffer));
 
@@ -106,64 +109,68 @@ public:
 
         }
 
-        //buffer_manager::get().allocate();
-
         socket_.async_read_some(boost::asio::buffer(bs_.watermark, bs_.capacity),
                                 [self = boost::intrusive_ptr(this), this](const boost::system::error_code& ec, std::size_t bytes_transferred)
                                 {
-
                                     if (!ec)
                                     {
                                         //TODO: handle parsing errors
                                         llhttp_errno_t err = parser_.process(bs_.watermark, bytes_transferred);
                                         bs_.capacity -= bytes_transferred;
                                         bs_.watermark += bytes_transferred;
-                                        if (err == HPE_OK)
-                                            read();
 
+                                        if (err == HPE_OK) {
+                                            if (parser_.state() != parser_state::MessageComplete)
+                                            read();
+                                        }
+                                        else {
+                                            //std::cout << "HTTP parsing error: " << parser_.get_error(err) << std::endl;
+                                            ctx_.res.status_code = 400;
+                                            keep_alive_ = false;
+                                            complete_request();
+                                        }
                                     }
                                     else{
-#ifdef TEST_DEBUG
-                                        std::cout << "ec: " << ec.message() << std::endl;
-#endif
-
-
-                                        if (ec == boost::asio::error::eof)
-                                        {
-#ifdef TEST_DEBUG
-
-
-
-#endif
-                                        }
-                                        else if (ec == boost::asio::error::operation_aborted)
-                                        {
-                                            // Happens, but don't know what it is.
-                                        }
-
-
+                                       //close();
                                     }
                                 }
                                 );
     }
 
 
+    void check_keep_alive(){
+
+        auto header_value = ctx_.req.get_header_value("connection");
+
+        if (parser_.minor_version() == 1){
+            if (header_value && iequals(*header_value,"close"))
+                keep_alive_ = false;
+            else
+                keep_alive_ = true;
+        }
+        else if (parser_.minor_version() == 0){
+            if (header_value && iequals(*header_value,"keep-alive"))
+                keep_alive_ = true;
+            else
+                keep_alive_ = false;
+        }
+    }
+
 
 
     void exec()
     {
-
-        router{}.match(ctx_);
+        check_keep_alive();
+        router{}.exec(ctx_);
         complete_request();
-        //   buffer_manager::get().reset();
     };
 
 
 
     void write_status_line(){
-            //in case status code is not in status_codes map, the status line for status 500 will be written
-            auto status = status_codes.at(ctx_.res.status_code.value_or(500), 500);
-            buffers_.emplace_back(status.data(), status.size());
+        //in case status code is not in status_codes map, the status line for status 500 will be written
+        auto status = status_codes.at(ctx_.res.status_code.value_or(500), 500);
+        buffers_.emplace_back(status.data(), status.size());
     }
 
     void write_headers(){
@@ -194,6 +201,13 @@ public:
             buffers_.emplace_back(server_name.data(), server_name.size());
             buffers_.emplace_back(crlf.data(), crlf.size());
         }
+
+        if (!keep_alive_){
+            static constexpr std::string_view server_key = "Connection: close";
+            buffers_.emplace_back(server_key.data(), server_key.size());
+            buffers_.emplace_back(crlf.data(), crlf.size());
+        }
+
         if (!ctx_.res.headers.count("date"))
         {
             static constexpr std::string_view date_key = "Date: ";
@@ -210,6 +224,7 @@ public:
 
     void complete_request()
     {
+
         auto reset_context = finally([&] {
             ctx_ = context{};
         });
@@ -221,7 +236,6 @@ public:
         }
 
 
-
         buffers_.clear();
         buffers_.reserve(4*(ctx_.res.headers.size()+5)+3);
 
@@ -230,6 +244,9 @@ public:
 
         buffers_.emplace_back(ctx_.res.body.data(), ctx_.res.body.size());
         do_write();
+
+
+
     }
 
     void do_write()
@@ -240,8 +257,13 @@ public:
         boost::asio::async_write(socket_, buffers_, [self = boost::intrusive_ptr(this), this]
                                  (const boost::system::error_code& ec, size_t) {
                                      if (ec) {
-                                         //log error
+                                         //destructor will be called in this case
+                                         //TODO: log error
                                          return;
+                                     }
+
+                                     if (keep_alive_) {
+                                         read();
                                      }
                                  });
     }
@@ -259,6 +281,21 @@ public:
     }
 private:
 
+    void close(){
+        if (is_closed_)
+            return;
+
+        boost::system::error_code ec;
+        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        socket_.close(ec);
+        is_closed_ = true;
+    }
+
+
+
+    bool is_closed_{false};
+    bool keep_alive_{false};
+
 
     std::size_t ref_count_{0};
     parser<connection> parser_{this};
@@ -275,6 +312,6 @@ private:
     std::vector<std::unique_ptr<char,buffer_deleter>> in_buffers_;
 };
 
-} //namespace scymnous
+} //namespace scymnus
 
 

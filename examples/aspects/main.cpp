@@ -2,7 +2,7 @@
 
 #include "server/app.hpp"
 
-using namespace scymnous;
+using namespace scymnus;
 
 ///When defining a model it is possible to define meta properties to the field of a model.
 ///It is also possible to define meta properties to the model itself
@@ -61,7 +61,7 @@ struct validate_aspect : aspect_base<"validate"> {
         }
         else {
             using properties = std::remove_cvref_t<decltype(field.properties)>;
-            if constexpr(scymnous::has_type<typename constraints::min<int>, properties>::value){
+            if constexpr(scymnus::has_type<typename constraints::min<int>, properties>::value){
 
                  auto v = std::get<constraints::min<int>>(field.properties).value();
 
@@ -156,14 +156,14 @@ int main(){
     /// let's add some
     api_manager::instance().name("Your name");
     api_manager::instance().email("your@email.com");
-    api_manager::instance().host("10.0.2.15:9090");
+    api_manager::instance().host("127.0.0.1:9090");
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
 
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 
 
     app.route([](body_param<"body", PointModel> body, context& ctx) -> response_for<http_method::POST, "/points">
@@ -282,7 +282,7 @@ int main(){
     /// swagger is accessible here: http://10.0.2.15:9090/api-doc
 
 
-    app.listen("10.0.2.15", "9090");
+    app.listen("127.0.0.1", "9090");
     app.run();
 }
 

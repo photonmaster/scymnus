@@ -1,6 +1,6 @@
 #pragma once
 
-namespace scymnous {
+namespace scymnus {
 namespace meta {
 
 
@@ -43,4 +43,4 @@ template<class A> ct_string(A a) -> ct_string<length(A::str())>;
 
 
 } //namespace meta
-} //namespace scymnous
+} //namespace scymnus

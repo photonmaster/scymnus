@@ -5,7 +5,7 @@
 #include "server/api_manager.hpp"
 
 
-namespace scymnous
+namespace scymnus
 {
 using json = nlohmann::json;
 
@@ -285,4 +285,4 @@ constexpr  bool is_query_param_v = is_query_param<T>::value;
 
 
 
-} //namespace scymnous
+} //namespace scymnus

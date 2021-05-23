@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_CXX_STANDARD 20)
 
-project(scymnous VERSION 0.0.1 LANGUAGES CXX)
+project(scymnus VERSION 0.0.1)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -fpic")
 
@@ -39,7 +39,7 @@ set(dir external)
 file(GLOB external "${dir}/*.hpp" "${dir}/*.h")
 
 set(dir external/http_parser)
-file(GLOB http_parser "${dir}/*.hpp" "${dir}/*.h" "${dir}/*.cpp")
+file(GLOB http_parser  "${dir}/*.h" "${dir}/*.c")
 
 set(dir server)
 file(GLOB server "${dir}/*.hpp")

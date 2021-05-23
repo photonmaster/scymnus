@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-namespace scymnous {
+namespace scymnus {
 
 template<class T>
 struct is_optional : std::false_type{};
@@ -35,4 +35,4 @@ constexpr  bool is_vector_v = is_vector<T>::value;
 
 
 
-} //namespace scymnous
+} //namespace scymnus

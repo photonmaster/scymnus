@@ -4,7 +4,7 @@
 
 
 
-namespace scymnous {
+namespace scymnus {
 
 
 class validation_exception : public std::exception

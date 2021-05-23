@@ -3,7 +3,7 @@
 #include <optional>
 
 
-namespace scymnous {
+namespace scymnus {
 
 template<class T>
 class init
@@ -72,4 +72,4 @@ public:
 //    }
 //};
 
-} //namespace scymnous
+} //namespace scymnus

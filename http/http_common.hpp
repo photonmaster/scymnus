@@ -4,7 +4,7 @@
 #include "core/ct_map.hpp"
 
 
-namespace scymnous {
+namespace scymnus {
 
 
 
@@ -17,8 +17,8 @@ namespace scymnous {
         CONNECT,
         OPTIONS,
         TRACE,
-        PATCH = 28,
-        ENUM_MEMBERS_COUNT = 10  //Always at the end
+        PATCH,
+        ENUM_MEMBERS_COUNT  //Always at the end
     };
 
 
@@ -182,7 +182,7 @@ constexpr const char* http_reason_phrase(int c)
 //static std::string crlf = "\r\n";
 
 
-static constexpr auto status_codes = scymnous::ct_map<int,std::string_view,61>{
+static constexpr auto status_codes = scymnus::ct_map<int,std::string_view,61>{
     {{
         {100, "HTTP/1.1 100 Continue\r\n"},
         {101, "HTTP/1.1 101 Switching Protocols\r\n"},
@@ -249,7 +249,7 @@ static constexpr auto status_codes = scymnous::ct_map<int,std::string_view,61>{
     };
 
 
-static constexpr std::string_view server_name{"scymnous v0.0.1"};
+static constexpr std::string_view server_name{"scymnus v0.0.1"};
 
 
 }

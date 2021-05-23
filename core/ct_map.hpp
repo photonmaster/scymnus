@@ -5,7 +5,7 @@
 
 
 
-namespace scymnous
+namespace scymnus
 {
 
 template<class Key, class Value, std::size_t Size>

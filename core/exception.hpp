@@ -5,7 +5,7 @@
 #include <string_view>
 
 
-namespace scymnous
+namespace scymnus
 {
 
 class sc_exception : public std::runtime_error
@@ -26,4 +26,4 @@ public:
 
 
 
-} // namespace scymnous
+} // namespace scymnus

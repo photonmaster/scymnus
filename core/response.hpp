@@ -7,7 +7,7 @@
 #include "server/http_context.hpp"
 #include "external/json.hpp"
 
-namespace scymnous {
+namespace scymnus {
 
 using json = nlohmann::json;
 
@@ -185,4 +185,4 @@ public:
 
 //};
 
-} //namespace scymnous
+} //namespace scymnus

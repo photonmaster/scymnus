@@ -4,7 +4,7 @@
 
 #include "headers_container.hpp"
 
-namespace scymnous
+namespace scymnus
 {
 
 

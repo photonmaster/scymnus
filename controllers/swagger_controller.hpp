@@ -15,7 +15,7 @@
 //TODO: secure access to files
 
 
-namespace scymnous {
+namespace scymnus {
 
 namespace fs = std::filesystem;
 
@@ -41,7 +41,7 @@ public:
     response_for<http_method::GET, "/api-doc"> operator() (context& ctx){
 
         ctx.res.status_code = 303;
-        ctx.res.add_header("Location",  api_manager::instance().swagger_path());
+        ctx.res.add_header("Location", "/swagger_ui" + api_manager::instance().swagger_path());
         return {};
     }
 };
@@ -50,10 +50,9 @@ public:
 class swagger_controller_files
 {
 public:
-    response_for<http_method::GET, "/:*">
+    response_for<http_method::GET, "/swagger_ui/:*">
     operator() (context& ctx) {
-
-         std::filesystem::path p{"." + ctx.raw_url};
+        std::filesystem::path p{ctx.raw_url.substr(11)};
 
         if (!p.has_filename()){
             ctx.res.status_code = 404;
@@ -67,8 +66,6 @@ public:
         auto ct = mime_map::content_type(p.extension().string());
         if (ct){
             ctx.res.add_header("Content-Type",*ct);
-            std::cout << "content type found" << *ct << std::endl;
-
         }
 
         ctx.res.status_code = 200;
@@ -79,5 +76,5 @@ public:
 
 };
 
-} //namespace scymnous
+} //namespace scymnus
 

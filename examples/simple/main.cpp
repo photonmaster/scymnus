@@ -1,7 +1,7 @@
 #include "server/app.hpp"
 
 
-using namespace scymnous;
+using namespace scymnus;
 
 
 using ColorModel = model<
@@ -37,15 +37,15 @@ std::map<int, PointModel> points{};
 int main(){
     api_manager::instance().name("Your name");
     api_manager::instance().email("your@email.com");
-    api_manager::instance().host("10.0.2.15:9090");
+    api_manager::instance().host("127.0.0.1:9090");
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
 
 
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 
     app.set_excpetion_handler([](context& ctx){
         try{
@@ -63,9 +63,9 @@ int main(){
     });
 
 
-    //    app.route(scymnous::get_swagger_description_controller{});
-    //    app.route(scymnous::api_doc_controller{});
-    //    app.route(scymnous::swagger_controller_files{});
+    //    app.route(scymnus::get_swagger_description_controller{});
+    //    app.route(scymnus::api_doc_controller{});
+    //    app.route(scymnus::swagger_controller_files{});
 
 
     app.route([](body_param<"body", PointModel> body,
@@ -110,6 +110,6 @@ int main(){
         .tag("points");
 
 
-    app.listen("10.0.2.15", "9090");
+    app.listen("127.0.0.1", "9090");
     app.run();
 }

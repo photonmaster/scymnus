@@ -4,7 +4,7 @@
 #include "headers_container.hpp"
 
 
-namespace scymnous
+namespace scymnus
 {
 struct http_response
 {
@@ -48,4 +48,4 @@ struct http_response
         http_response(const http_response& r) = delete;
 };
 
-} //scymnous
+} //scymnus

@@ -7,7 +7,7 @@
 #include "http/query_parser.hpp"
 #include "url/url.hpp"
 
-namespace scymnous
+namespace scymnus
 {
 
 struct context
@@ -21,11 +21,14 @@ struct context
     http_request  req;
     http_response  res;
 
+    bool is_ended(){
+        return end_;
+    }
+    void end(){
+        end_ = true;
+    }
 
-    //method for writing response
-    
     //write support
-    
     query_string get_query_string(){
         if(query)
             return query.value();
@@ -35,6 +38,10 @@ struct context
         }
         return query.value();
     }
+
+private:
+    bool end_{false};
+
 };
 
-} //namespace scymnous
+} //namespace scymnus

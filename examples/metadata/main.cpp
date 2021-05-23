@@ -2,7 +2,7 @@
 
 
 
-using namespace scymnous;
+using namespace scymnus;
 
 
 
@@ -40,15 +40,15 @@ int main(){
     /// let's add some
     api_manager::instance().name("Your name");
     api_manager::instance().email("your@email.com");
-    api_manager::instance().host("10.0.2.15:9090");
+    api_manager::instance().host("127.0.0.1:9090");
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
 
 
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 
 
     ///for creating 3D point we will define first a POST endpoint.
@@ -161,7 +161,7 @@ int main(){
     /// swagger is accessible here: http://10.0.2.15:9090/api-doc
 
 
-    app.listen("10.0.2.15", "9090");
+    app.listen("127.0.0.1", "9090");
     app.run();
 }
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <string_view>
 
-namespace scymnous {
+namespace scymnus {
 namespace utils {
 
 
@@ -52,4 +52,4 @@ inline std::string_view trim(std::string_view source) { return ltrim(rtrim(sourc
 
 
 } //namespace utils
-} //namespace scymnous
+} //namespace scymnus

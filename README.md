@@ -1,5 +1,5 @@
 ## Introduction
-**Scymnous** is a web service framework for c++.
+**Scymnus** is a web service framework for c++.
 Swagger documentation is generated automatically without macros.
 It tries to solve the lack of reflection in c++ by using c++20 feutures
 and heavily relying on templates.
@@ -7,8 +7,8 @@ and heavily relying on templates.
 **This is a work in progress of pre-alpha quality**
 
 ## Usage
-- Scymnous can be compiled with gcc 9.1
-- Boost 1.70 is needed (Boos Asio, utils)
+- Scymnus can be compiled with gcc 9.1
+- Boost 1.70 is needed (Boost Asio, utils)
 - cmake
 
 ## 3rd party tools included in source tree
@@ -30,7 +30,7 @@ was taken
 
 first a using directive for makign things easier
 ```cpp
-using namespace scymnous;
+using namespace scymnus;
 ```
 
 we are using the `api_manager::instance()` to setup some basic properties of our service.
@@ -38,7 +38,7 @@ in order to be able to browse swagger documentation a path to swagger resources
 must be set first by calling ` api_manager::instance().swagger_path()`
 the path must be relative to the executable.
 E.g.: 
-`api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");`
+`api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");`
 
 all needed files can be found in `external/swagger/dist` directory.
 
@@ -50,18 +50,18 @@ int main(){
       api_manager::instance().title("Calculator service");
       api_manager::instance().version(0,1);
       api_manager::instance().email("your email");
-      api_manager::instance().host("10.0.2.15:9090");
+      api_manager::instance().host("127.0.0.1:9090");
       api_manager::instance().add_consume_type("aplication/json");
       api_manager::instance().add_produce_type("aplication/json");
       api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+      api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 ```
 
- `scymnous::app` is a singleton. We are taking a reference on it, named app,
+ `scymnus::app` is a singleton. We are taking a reference on it, named app,
  that we will be using in the rest of the code
  
  ```cpp
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 ```
 our service will expose a single GET endpoint. Two path integer parameters named  `x` and `y` must be given by clients. The service will return the sum of the two integers 
  ```cpp
@@ -77,10 +77,10 @@ our service will expose a single GET endpoint. Two path integer parameters named
 ```
 
 Finally we are starting the webservice.
-Swagger is accessible here: http://10.0.2.15:9090/api-doc
+Swagger is accessible here: http://127.0.0.1:9090/api-doc
 
  ```cpp
-    app.listen("10.0.2.15", "9090");
+    app.listen("127.0.0.1", "9090");
     app.run();
 ```
 }
@@ -89,20 +89,20 @@ complete code:
 ```cpp
 #include "server/app.hpp"
 
-using namespace scymnous;
+using namespace scymnus;
 
 int main(){
       api_manager::instance().name("your name");
       api_manager::instance().title("Calculator service");
       api_manager::instance().version(0,1);
       api_manager::instance().email("your email");
-      api_manager::instance().host("10.0.2.15:9090");
+      api_manager::instance().host("127.0.0.1:9090");
       api_manager::instance().add_consume_type("aplication/json");
       api_manager::instance().add_produce_type("aplication/json");
       api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+      api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 
     app.route([](path_param<"x", int> x,path_param<"y", int> y, context& ctx)
                   -> response_for<http_method::GET, "/sum/{x}/{y}">
@@ -114,7 +114,7 @@ int main(){
         .description("Returns the sum of two integer numbers")
         .tag("calculator");
 
-    app.listen("10.0.2.15", "9090");
+    app.listen("127.0.0.1", "9090");
     app.run();
 }
 ```
@@ -166,7 +166,7 @@ Each field can have each own properties. The following field properties can be d
 - init
 - ...
 
-It is possible for the users of Scymnous to define user defined meta-properties 
+It is possible for the users of Scymnus to define user defined meta-properties 
 
 Here is the updated 3d point model, where meta-properties are used:
 
@@ -211,13 +211,13 @@ std::map<int, PointModel> points{}; //map for holding created points
 int main(){
     api_manager::instance().name("Your name");
     api_manager::instance().email("your@email.com");
-    api_manager::instance().host("10.0.2.15:9090");
+    api_manager::instance().host("127.0.0.1:9090");
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
     
     app.route([](body_param<"body", PointModel> body,
                  context& ctx) -> response_for<http_method::POST, "/points">
@@ -233,7 +233,7 @@ int main(){
 ```
 when sending the request below:
 ```
-curl -X POST "http://10.0.2.15:9090/points" -H  "accept: aplication/json" -H  "Content-Type: aplication/json" -d "{ \"x\": 0,  \"y\": 0  }"
+curl -X POST "http://127.0.0.1:9090/points" -H  "accept: aplication/json" -H  "Content-Type: aplication/json" -d "{ \"x\": 0,  \"y\": 0  }"
 ```
 the response would look like:
 ```javascript
@@ -250,7 +250,7 @@ the response would look like:
 }
 ```
 ### aspects
-Scymnous supports before and after aspects. An aspect is a piece of code that is executed by Scymnous before or after the main handler.
+Scymnus supports before and after aspects. An aspect is a piece of code that is executed by Scymnus before or after the main handler.
 
 #### example
 ```cpp
@@ -290,7 +290,7 @@ struct validate_aspect : aspect_base<"validate"> {
         }
         else {
             using properties = std::remove_cvref_t<decltype(field.properties)>;
-            if constexpr(scymnous::has_type<typename constraints::min<int>, properties>::value){
+            if constexpr(scymnus::has_type<typename constraints::min<int>, properties>::value){
                  auto v = std::get<constraints::min<int>>(field.properties).value();
                 if (value < v)
                     throw std::runtime_error{"field value is less than minimum value allowed"};
@@ -376,13 +376,13 @@ int main(){
     /// let's add some
     api_manager::instance().name("Your name");
     api_manager::instance().email("your@email.com");
-    api_manager::instance().host("10.0.2.15:9090");
+    api_manager::instance().host("127.0.0.1:9090");
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnous/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
 
-    auto& app = scymnous::app::instance();
+    auto& app = scymnus::app::instance();
 
 
     app.route([](body_param<"body", PointModel> body, context& ctx) -> response_for<http_method::POST, "/points">
@@ -403,8 +403,8 @@ int main(){
         .tag("points");
 
     /// Finally we are starting the webservice
-    /// swagger is accessible here: http://10.0.2.15:9090/api-doc
-    app.listen("10.0.2.15", "9090");
+    /// swagger is accessible here: http://127.0.0.1:9090/api-doc
+    app.listen("127.0.0.1", "9090");
     app.run();
 }
 ```

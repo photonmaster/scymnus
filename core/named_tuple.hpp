@@ -22,7 +22,7 @@
 
 
 
-namespace scymnous {
+namespace scymnus {
 
 using namespace meta;
 
@@ -447,7 +447,7 @@ constexpr bool is_model_v = detail::is_model<std::decay_t<T>>::value;
 //takes in a std::tuple and a typlist
 //and outputs an object
 
-}//scymnous
+}//scymnus
 
 
 
@@ -455,6 +455,6 @@ constexpr bool is_model_v = detail::is_model<std::decay_t<T>>::value;
 namespace std {
 
 template< class... Types >
-class tuple_size< scymnous::model<Types...> >
-    : public std::integral_constant<std::size_t, scymnous::model<Types...>::object_size> { };
+class tuple_size< scymnus::model<Types...> >
+    : public std::integral_constant<std::size_t, scymnus::model<Types...>::object_size> { };
 }//namespace std

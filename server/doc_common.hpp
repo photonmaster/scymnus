@@ -1,6 +1,6 @@
 #pragma once
 
-namespace scymnous {
+namespace scymnus {
 
 enum ParameterType {
     Body,
@@ -83,4 +83,4 @@ constexpr const char* http_status_description()
 
 
 
-} //namespace scymnous
+} //namespace scymnus
