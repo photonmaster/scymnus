@@ -294,7 +294,7 @@ public:
                     match_type = PartialMatch;
                     for (const auto &c : parts[index]) {
                         if ((c >= '0' && c <= '9') || c == '+' ||
-                            c == '-') {  // TODO only allow + and - on the beginning
+                                c == '-') {  // TODO only allow + and - on the beginning
                             continue;
                         } else {
                             match_type = NoMatch;
@@ -315,7 +315,7 @@ public:
                     match_type = PartialMatch;
                     for (const auto &c : parts[index]) {
                         if ((c >= '0' && c <= '9') || c == '.' || c == '+' ||
-                            c == '-') {  // TODO only allow + and - on the beginning
+                                c == '-') {  // TODO only allow + and - on the beginning
                             continue;
                         } else {
                             match_type = NoMatch;
@@ -382,9 +382,8 @@ public:
         return {nullptr, path_parameters};
     }
 
-    trie() : head_{}{
-        std::cout << "trie ctor" << std::endl;
-    }
+        trie() : head_{} {
+        }
 
     trie(const trie& tr) = delete;
 
@@ -429,7 +428,7 @@ struct param_visitor;
 //};
 
 
-template<ct_string Name, class  T, meta::ct_string Path>
+template<meta::ct_string Name, class  T, meta::ct_string Path>
 struct param_visitor<path_param<Name,T>, Path>
 {
 
@@ -473,7 +472,7 @@ struct param_visitor<path_param<Name,T>, Path>
 
 
 
-template<ct_string Name, class  T, meta::ct_string Path>
+template<meta::ct_string Name, class  T, meta::ct_string Path>
 struct param_visitor<header_param<Name,T>, Path>
 {
     //Path is not used
@@ -486,7 +485,7 @@ struct param_visitor<header_param<Name,T>, Path>
 };
 
 
-template<ct_string Name, class  T, meta::ct_string Path>
+template<meta::ct_string Name, class  T, meta::ct_string Path>
 struct param_visitor<query_param<Name,T>, Path>
 {
     static decltype(auto) get(context& ctx)
@@ -500,7 +499,7 @@ struct param_visitor<query_param<Name,T>, Path>
 
 
 
-template<ct_string Name, class  T, meta::ct_string Path>
+template<meta::ct_string Name, class  T, meta::ct_string Path>
 struct param_visitor<body_param<Name,T>, Path>
 {
     static decltype(auto) get(context& ctx)
@@ -517,7 +516,7 @@ struct param_visitor<body_param<Name,T>, Path>
     }
 };
 
-template<ct_string Name, meta::ct_string Path>
+template<meta::ct_string Name, meta::ct_string Path>
 struct param_visitor<segment_param<Name>, Path>
 {
     static constexpr const char* name = Name.str();
@@ -621,7 +620,7 @@ class response_registrator {
 public:
     response_registrator() {
         api_manager::instance().endpoint_responses_["paths"][std::string(Path)][to_string(Method)]["responses"][std::to_string(c)] =
-            traits<T>::describe();
+                traits<T>::describe();
     }
 };
 
@@ -729,27 +728,10 @@ struct router_parameters {
             api_manager::instance().swagger_["paths"][path][m]["tags"] += *tag_;
 
             if (!api_manager::instance().endpoint_responses_["paths"][path][m].is_null()) {
-                std::cout << "responses for " << path << ": " <<
-                    api_manager::instance().endpoint_responses_["paths"][path][m]["responses"].dump() << std::endl;
                 api_manager::instance().swagger_["paths"][path][m]["responses"] =
-                    api_manager::instance().endpoint_responses_["paths"][path][m]["responses"];
+                api_manager::instance().endpoint_responses_["paths"][path][m]["responses"];
             }
         }
-
-        //                if (!consumes_.empty())
-        //                    api_manager::instance().swagger["paths"][path][operation_to_string<type>()]["consumes"]
-        //                        = consumes_;
-        //                if (!produces_.empty())
-        //                    api_manager::instance().swagger["paths"][path][operation_to_string<type>()]["produces"]
-        //                        = produces_;
-
-        //                if (!tags_.empty()) {
-        //                    api_manager::instance().swagger["paths"][path][operation_to_string<type>()]["tags"]
-        //                        = tags_;
-        //                }
-
-        //     api_manager::instance().swagger["paths"][path][operation_to_string<type>()]["responses"] = responses();
-
     }
 };
 
@@ -775,8 +757,8 @@ public:
                 ctx.end();
             }
             else {
-                    ctx.path_details = std::move(match_data.second);
-                    method_data_[ctx.method].controllers_.at(match_data.first)(ctx);
+                ctx.path_details = std::move(match_data.second);
+                method_data_[ctx.method].controllers_.at(match_data.first)(ctx);
 
             }
         }
@@ -839,9 +821,9 @@ private:
 
 
         auto l = [patterned_url = path, aspects = std::tuple<T...>{t...},  f = std::conditional_t<
-                                                                              std::is_lvalue_reference<F>::value,
-                                                                              std::reference_wrapper<std::remove_reference_t<F>>, F>{
-                                                                              std::forward<F>(f)}](context& ctx) {
+                std::is_lvalue_reference<F>::value,
+                std::reference_wrapper<std::remove_reference_t<F>>, F>{
+                std::forward<F>(f)}](context& ctx) {
             ctx.patterned_url = patterned_url;
 
             //execute pre
@@ -857,7 +839,7 @@ private:
                 constexpr  meta::ct_string p = meta::ct_string(return_type::path);
 
                 using aspect_return_type =
-                    ct::return_type_t<std::decay_t<decltype(a)>>;
+                ct::return_type_t<std::decay_t<decltype(a)>>;
 
                 aspect_unpacker<has_context, return_type, aspect_arguments>::execute(a,ctx);
             });
@@ -874,7 +856,7 @@ private:
 
 
         auto node =  method_data_[return_type::method].
-                    trie_.add(path);
+                trie_.add(path);
         method_data_[return_type::method].controllers_[node] = l;
 
     };
@@ -891,9 +873,9 @@ private:
         //so that they will not show up in swagger
 
         using union_t = tl::merge_t<
-            designated_types,
-            tl::remove_if<aspect_filter_t,
-                          ct::args_t<std::decay_t<T>, operation>, operation<>>...>;
+        designated_types,
+        tl::remove_if<aspect_filter_t,
+        ct::args_t<std::decay_t<T>, operation>, operation<>>...>;
 
         json v = unpacker<typename union_t::parameters_t>::describe();
         using return_type = ct::return_type_t<F>;
@@ -910,7 +892,7 @@ private:
         for_each(aspects, [&](auto& aspect){
             //get response type of aspect
             using aspect_return_type =
-                ct::return_type_t<std::decay_t<decltype(aspect)>>;
+            ct::return_type_t<std::decay_t<decltype(aspect)>>;
 
             std::string aspect_name =  aspect_return_type::aspect_name;
 
@@ -925,7 +907,7 @@ private:
                     std::string status =   it.value()["status"];
                     json details = it.value()["details"];
                     api_manager::instance().endpoint_responses_["paths"][std::string(return_type::path)][to_string(return_type::method)]["responses"][status] =
-                        details;
+                            details;
                 }
             }
         });
@@ -968,9 +950,9 @@ private:
 
             return std::tuple_cat([](auto& arg){
                 if constexpr (std::remove_cvref_t<decltype(arg)>::hook == hook_type::before)
-                    return  std::tuple<decltype(arg)>{arg};
+                        return  std::tuple<decltype(arg)>{arg};
                 else
-                    return std::tuple<>{};
+                return std::tuple<>{};
             }(t)...);
         }, aspects);
 
@@ -980,22 +962,22 @@ private:
 
             return std::tuple_cat([](auto& arg){
                 if constexpr (std::remove_cvref_t<decltype(arg)>::hook == hook_type::after)
-                    return  std::tuple<decltype(arg)>{arg};
+                        return  std::tuple<decltype(arg)>{arg};
                 else
-                    return std::tuple<>{};
+                return std::tuple<>{};
             }(t)...);
         }, aspects);
 
         auto l = [patterned_url = path,
-                  before_aspects = std::move(before_aspects),
-                  after_aspects = std::move(after_aspects),
-                  f = std::conditional_t<std::is_lvalue_reference<F>::value,
-                                         std::reference_wrapper<std::remove_reference_t<F>>, F>{
-                      std::forward<F>(f)}](context& ctx) {
+                before_aspects = std::move(before_aspects),
+                after_aspects = std::move(after_aspects),
+                f = std::conditional_t<std::is_lvalue_reference<F>::value,
+                std::reference_wrapper<std::remove_reference_t<F>>, F>{
+                std::forward<F>(f)}](context& ctx) {
             ctx.patterned_url = patterned_url;
 
             //execute before aspects
-            //         if constexpr (std::tuple_size<decltype(before_aspects)>::value){
+
             for_each(before_aspects, [&](auto& a){
 
                 using aspect_arguments = tl::remove_if<is_context,ct::args_t<std::decay_t<decltype(a)>, operation>, operation<>>;
@@ -1005,7 +987,7 @@ private:
                 constexpr  meta::ct_string p = meta::ct_string(return_type::path);
 
                 using aspect_return_type =
-                    ct::return_type_t<std::decay_t<decltype(a)>>;
+                ct::return_type_t<std::decay_t<decltype(a)>>;
                 aspect_unpacker<has_context, return_type, aspect_arguments>::execute(a,ctx);
             });
             //}
@@ -1022,14 +1004,14 @@ private:
                 constexpr  meta::ct_string p = meta::ct_string(return_type::path);
 
                 using aspect_return_type =
-                    ct::return_type_t<std::decay_t<decltype(a)>>;
+                ct::return_type_t<std::decay_t<decltype(a)>>;
                 aspect_unpacker<has_context, return_type, aspect_arguments>::execute(a,ctx);
             });
         };
 
 
         auto node =  method_data_[return_type::method].
-                    trie_.add(path);
+                trie_.add(path);
         method_data_[return_type::method].controllers_[node] = l;
 
         return router_parameters{return_type::path.str(), return_type::method};
@@ -1038,30 +1020,30 @@ private:
     friend class app;
 
     using method_data =
-        struct
+    struct
     {
-        std::unordered_map<node*, callable_t> controllers_;
-        trie trie_;
-    };
+    std::unordered_map<node*, callable_t> controllers_;
+    trie trie_;
+};
 
-    static inline std::unordered_map<http_method, method_data> method_data_{};
+static inline std::unordered_map<http_method, method_data> method_data_{};
 
 
-    //default exception handler
-    static inline exception_handler exception_handler_ {
-        [](context& ctx){
-            std::cout << "default exception handler called" << std::endl;
+//default exception handler
+static inline exception_handler exception_handler_ {
+    [](context& ctx){
+        std::cout << "default exception handler called" << std::endl;
 
-            try{
-                throw;
-            }
-
-            catch(std::exception& exp){
-                ctx.res.status_code = 400;
-                ctx.res.body = exp.what();
-            }
+        try{
+            throw;
         }
-    };
+
+        catch(std::exception& exp){
+            ctx.res.status_code = 400;
+            ctx.res.body = exp.what();
+        }
+    }
+};
 
 
 
