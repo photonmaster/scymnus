@@ -20,14 +20,15 @@ struct http_request
         headers.emplace(field, value);
     }
 
-
-
+    void reset(){
+       headers.clear();
+       body = message_data_t{};
+    }
 
     std::optional<std::string> get_header_value(std::string_view field)
     {
         if (headers.count(field))
         {
-
             return to_string(headers.find(field)->second);
         }
         return {};

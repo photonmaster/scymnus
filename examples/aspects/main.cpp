@@ -63,7 +63,7 @@ struct validate_aspect : aspect_base<"validate"> {
             using properties = std::remove_cvref_t<decltype(field.properties)>;
             if constexpr(scymnus::has_type<typename constraints::min<int>, properties>::value){
 
-                 auto v = std::get<constraints::min<int>>(field.properties).value();
+                 auto v = std::get<constraints::min<int>>(field.properties).value;
 
                 if (value < v)
                     throw std::runtime_error{"field value is less than minimum value allowed"};
@@ -130,7 +130,7 @@ struct check_operator_aspect : aspect_base<"check_operator", hook_type::before> 
 /// Let's define a before aspect that will log the request:
 
 struct log_request_aspect : aspect_base<"log_url", hook_type::before> {
-    sink<"log_request"> operator()(context& ctx)
+    sink<"log_url"> operator()(context& ctx)
     {
         std::cout << "URL IS: " << ctx.raw_url << std::endl;
         return {};
@@ -139,7 +139,7 @@ struct log_request_aspect : aspect_base<"log_url", hook_type::before> {
 
 /// Let's define an after aspect that will log the response:
 
-struct log_response_aspect : aspect_base<"log_url", hook_type::after> {
+struct log_response_aspect : aspect_base<"log_response", hook_type::after> {
     sink<"log_response"> operator()(context& ctx)
     {
         std::cout << "RESPONSE IS: " << ctx.res.body << std::endl;
@@ -160,7 +160,8 @@ int main(){
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("/swagger_resources/index.html");
+
 
 
     auto& app = scymnus::app::instance();

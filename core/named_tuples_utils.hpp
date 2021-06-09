@@ -63,10 +63,13 @@ void from_json(const json& j, NamedTuple& p) {
         if constexpr (is_optional_v<type>){
             if (!j.contains(f.name)){
                 using nested_type = type::value_type;
-                if constexpr (scymnus::has_type<init<nested_type>, properties>::value){
 
-                    v = std::get<init<nested_type>>(f.properties).value();
+                if constexpr (has_init<properties>::value)
+                {
+                    constexpr int idx = tl::index_if<is_init,properties>::value;
+                    v = std::get<idx>(f.properties).value();
                 }
+
             }
             else {
                 j.at(f.name).get_to(v);

@@ -17,13 +17,21 @@ int main(){
       api_manager::instance().add_consume_type("aplication/json");
       api_manager::instance().add_produce_type("aplication/json");
       api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+      api_manager::instance().swagger_path("/swagger_resources/index.html");
 
 
     /// scymnus::app is a singleton. we are taking a reference to each instance, named app
     /// that we will be using in the rest of the code
     auto& app = scymnus::app::instance();
 
+
+
+
+    app.route([](context& ctx)
+                  -> response_for<http_method::GET, "/plaintext">
+           {
+        return response{status<200>, std::string("Hello, World!"), ctx};
+              });
 
 
     app.route([](path_param<"x", int> x,path_param<"y", int> y, context& ctx)

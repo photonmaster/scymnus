@@ -44,7 +44,7 @@ int main(){
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("/swagger_resources/index.html");
 
 
 

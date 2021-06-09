@@ -10,7 +10,7 @@ namespace scymnus
 using json = nlohmann::json;
 
 
-template<ct_string Name, class  T>
+template<meta::ct_string Name, class  T>
 class path_param {
     T value;
 public:
@@ -48,7 +48,7 @@ public:
 template<typename>
 struct is_path_param : std::false_type {};
 
-template<ct_string S, typename A>
+template<meta::ct_string S, typename A>
 struct is_path_param<path_param<S,A>> : std::true_type {};
 
 template<class T>
@@ -58,7 +58,7 @@ constexpr bool  is_path_param_v = is_path_param<T>::value;
 
 
 
-template<ct_string Name>
+template<meta::ct_string Name>
 class segment_param {
     std::string value;
 public:
@@ -90,7 +90,7 @@ public:
 template<typename>
 struct is_segment_param : std::false_type {};
 
-template<ct_string S>
+template<meta::ct_string S>
 struct is_segment_param<segment_param<S>> : std::true_type {};
 
 template<class T>
@@ -106,7 +106,7 @@ constexpr bool is_path_or_segment_param_v = is_path_or_segment_param<T>::value;
 
 
 
-template<ct_string Name, class  T>
+template<meta::ct_string Name, class  T>
 class header_param {
     T value;
 public:
@@ -150,7 +150,7 @@ public:
 template<typename>
 struct is_header_param : std::false_type {};
 
-template<ct_string Name,typename T>
+template<meta::ct_string Name,typename T>
 struct is_header_param<header_param<Name,T>> : std::true_type {};
 
 template<typename T>
@@ -158,7 +158,7 @@ constexpr  bool is_header_param_v = is_header_param<T>::value;
 
 
 
-template<ct_string Name, class  T>
+template<meta::ct_string Name, class  T>
 class body_param {
 
     T value;
@@ -221,7 +221,7 @@ public:
 template<typename>
 struct is_body_param : std::false_type {};
 
-template<ct_string Name,typename T>
+template<meta::ct_string Name,typename T>
 struct is_body_param<body_param<Name,T>> : std::true_type {};
 
 template<typename T>
@@ -229,7 +229,7 @@ constexpr  bool is_body_param_v = is_body_param<T>::value;
 
 
 
-template<ct_string Name, class  T>
+template<meta::ct_string Name, class  T>
 class query_param {
 
     T value;
@@ -275,7 +275,7 @@ public:
 template<typename>
 struct is_query_param : std::false_type {};
 
-template<ct_string Name,typename T>
+template<meta::ct_string Name,typename T>
 struct is_query_param<query_param<Name,T>> : std::true_type {};
 
 template<typename T>

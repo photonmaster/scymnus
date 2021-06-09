@@ -9,10 +9,10 @@
 #include "boost/asio/write.hpp"
 #include "server/router.hpp"
 #include "date_manager.hpp"
+#include "external/decimal_from.hpp"
 
 
-
-
+#include <memory_resource>
 
 namespace scymnus
 {
@@ -43,7 +43,7 @@ detail::final_action<F> finally(F f) {
 
 
 
-constexpr size_t page_size = 4096;
+constexpr size_t page_size = 512 * 1000;
 
 
 struct buffer_state
@@ -58,9 +58,12 @@ struct buffer_state
 
 
 
+template <typename T>
+class parser;
+
 class connection
 {
-    context ctx_;
+    context ctx_{};
     void* current_buffer;
 public:
 
@@ -75,9 +78,9 @@ public:
 
     ~connection()
     {
-#ifdef TEST_DEBUG
+        #ifdef TEST_DEBUG
         std::cout << "connection destructed in thread:" << std::this_thread::get_id() << std::endl;
-#endif
+        #endif
     }
 
     boost::asio::ip::tcp::socket& socket()
@@ -99,7 +102,7 @@ public:
 
     void read(){
         //TODO: check this
-        if (bs_.capacity < 1){
+        if (bs_.capacity < 128){
             current_buffer =  (buffer_manager::get().allocate());
             in_buffers_.emplace_back( static_cast<char*>(current_buffer));
 
@@ -108,33 +111,38 @@ public:
             bs_.new_buff = true;
 
         }
+#ifdef TEST_DEBUG
+        std::cout << "read called in thread:" << std::this_thread::get_id() << std::endl;
+#endif
 
         socket_.async_read_some(boost::asio::buffer(bs_.watermark, bs_.capacity),
                                 [self = boost::intrusive_ptr(this), this](const boost::system::error_code& ec, std::size_t bytes_transferred)
-                                {
-                                    if (!ec)
-                                    {
-                                        //TODO: handle parsing errors
-                                        llhttp_errno_t err = parser_.process(bs_.watermark, bytes_transferred);
-                                        bs_.capacity -= bytes_transferred;
-                                        bs_.watermark += bytes_transferred;
+        {
+            if (!ec)
+            {
+                //TODO: handle parsing errors
+                llhttp_errno_t err = parser_.process(bs_.watermark, bytes_transferred);
+                bs_.capacity -= bytes_transferred;
+                bs_.watermark += bytes_transferred;
 
-                                        if (err == HPE_OK) {
-                                            if (parser_.state() != parser_state::MessageComplete)
-                                            read();
-                                        }
-                                        else {
-                                            //std::cout << "HTTP parsing error: " << parser_.get_error(err) << std::endl;
-                                            ctx_.res.status_code = 400;
-                                            keep_alive_ = false;
-                                            complete_request();
-                                        }
-                                    }
-                                    else{
-                                       //close();
-                                    }
-                                }
-                                );
+                if (err == HPE_OK) {
+                    if (parser_.state() != parser_state::MessageComplete)
+                        read();
+                }
+                else {
+#ifdef TEST_DEBUG
+                    std::cout << "HTTP parsing error: " << parser_.get_error(err) << std::endl;
+#endif
+                    ctx_.res.status_code = 400;
+                    keep_alive_ = false;
+                    complete_request();
+                }
+            }
+            else{
+               //close();
+            }
+        }
+        );
     }
 
 
@@ -167,86 +175,50 @@ public:
 
 
 
-    void write_status_line(){
-        //in case status code is not in status_codes map, the status line for status 500 will be written
-        auto status = status_codes.at(ctx_.res.status_code.value_or(500), 500);
-        buffers_.emplace_back(status.data(), status.size());
-    }
-
-    void write_headers(){
-        static constexpr std::string_view seperator = ": ";
-        static constexpr std::string_view crlf = "\r\n";
-
-        for(auto& v : ctx_.res.headers)
-        {
-            buffers_.emplace_back(v.first.data(), v.first.size());
-            buffers_.emplace_back(seperator.data(), seperator.size());
-            buffers_.emplace_back(v.second.data(), v.second.size());
-            buffers_.emplace_back(crlf.data(), crlf.size());
-        }
-
-        if (!ctx_.res.headers.count("content-length"))
-        {
-            static constexpr std::string_view content_length_key = "Content-Length: ";
-            content_length_ = std::to_string(ctx_.res.body.size());
-            buffers_.emplace_back(content_length_key.data(), content_length_key.size());
-            buffers_.emplace_back(content_length_.data(), content_length_.size());
-            buffers_.emplace_back(crlf.data(), crlf.size());
-        }
-        if (!ctx_.res.headers.count("server"))
-        {
-            static constexpr std::string_view server_key = "Server: ";
-
-            buffers_.emplace_back(server_key.data(), server_key.size());
-            buffers_.emplace_back(server_name.data(), server_name.size());
-            buffers_.emplace_back(crlf.data(), crlf.size());
-        }
-
-        if (!keep_alive_){
-            static constexpr std::string_view server_key = "Connection: close";
-            buffers_.emplace_back(server_key.data(), server_key.size());
-            buffers_.emplace_back(crlf.data(), crlf.size());
-        }
-
-        if (!ctx_.res.headers.count("date"))
-        {
-            static constexpr std::string_view date_key = "Date: ";
-            date_str_ = date_manager::instance().get_date();
-
-            buffers_.emplace_back(date_key.data(), date_key.size());
-            buffers_.emplace_back(date_str_.data(), date_str_.size() - 1);
-            buffers_.emplace_back(crlf.data(), crlf.size());
-        }
-        buffers_.emplace_back(crlf.data(), crlf.size());
-
-    }
-
-
     void complete_request()
     {
 
-        auto reset_context = finally([&] {
-            ctx_ = context{};
-        });
+        response.clear();
 
+        static constexpr std::string_view success_response = "HTTP/1.1 200 OK\r\n";
 
-        if (!socket_.is_open())
-        {
-            return;
+        if (ctx_.res.status_code.value() == 200)
+            response.append("HTTP/1.1 200 OK\r\n");
+        else{
+            auto status = status_codes.at(ctx_.res.status_code.value_or(500), 500);
+            response.append(status);
         }
 
+        for(auto& v : ctx_.res.headers)
+        {
+            response.append(v.first);
+            response.append(":");
+            response.append(v.second);
+            response.append("\r\n");
+        }
 
-        buffers_.clear();
-        buffers_.reserve(4*(ctx_.res.headers.size()+5)+3);
+        static constexpr auto long_bufsize  = std::numeric_limits<long>::max_digits10 + 2;
+        char spec[long_bufsize];
+        content_length_ = decimal_from(ctx_.res.body.size(), spec);//   std::to_string(ctx_.res.body.size());
 
-        write_status_line();
-        write_headers();
 
-        buffers_.emplace_back(ctx_.res.body.data(), ctx_.res.body.size());
+        response.append("Content-Length:");
+        response.append(content_length_);
+        response.append("\r\n");
+
+
+           if (!keep_alive_){
+            response.append( "Connection:close\r\n");
+        }
+
+        date_str_ = date_manager::instance().get_date();
+
+        response.append("Date:");
+        response.append(date_str_);
+        response.append(" GMT\r\n\r\n");
+        response.append(ctx_.res.body);
+
         do_write();
-
-
-
     }
 
     void do_write()
@@ -254,62 +226,68 @@ public:
 #ifdef TEST_DEBUG
         std::cout << "write called in thread:" << std::this_thread::get_id() << std::endl;
 #endif
-        boost::asio::async_write(socket_, buffers_, [self = boost::intrusive_ptr(this), this]
+
+
+        boost::asio::async_write(socket_, boost::asio::buffer(response)/*buffers_*/, [self = boost::intrusive_ptr(this), this]
                                  (const boost::system::error_code& ec, size_t) {
-                                     if (ec) {
-                                         //destructor will be called in this case
-                                         //TODO: log error
-                                         return;
-                                     }
+            if (ec) {
+                //destructor will be called in this case
+                return;
+            }
+            ctx_.reset();
 
-                                     if (keep_alive_) {
-                                         read();
-                                     }
-                                 });
-    }
+            if (keep_alive_) {
+                read();
+        }
+    });
+}
 
 
-    //intrusive_ptr handling
+//intrusive_ptr handling
 
-    inline friend void intrusive_ptr_add_ref(connection* c) noexcept{
-        ++c->ref_count_;
-    }
+inline friend void intrusive_ptr_add_ref(connection* c) noexcept{
+    ++c->ref_count_;
+}
 
-    inline friend void intrusive_ptr_release(connection* c) noexcept{
-        if(--c->ref_count_ == 0)
-            delete c;
-    }
+inline friend void intrusive_ptr_release(connection* c) noexcept{
+    if(--c->ref_count_ == 0)
+        delete c;
+}
 private:
 
-    void close(){
-        if (is_closed_)
-            return;
+void close(){
+    if (is_closed_)
+        return;
 
-        boost::system::error_code ec;
-        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-        socket_.close(ec);
-        is_closed_ = true;
-    }
-
-
-
-    bool is_closed_{false};
-    bool keep_alive_{false};
+    boost::system::error_code ec;
+    socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+    socket_.close(ec);
+    is_closed_ = true;
+}
 
 
-    std::size_t ref_count_{0};
-    parser<connection> parser_{this};
-    friend class parser<connection>;
-    boost::asio::ip::tcp::socket socket_;
 
-    buffer_state  bs_;
+bool is_closed_{false};
+bool keep_alive_{false};
 
-    std::vector<boost::asio::const_buffer> buffers_;
 
-    std::string content_length_;
-    std::string date_str_;
+std::size_t ref_count_{0};
 
-    std::vector<std::unique_ptr<char,buffer_deleter>> in_buffers_;
+friend class parser <connection>;
+parser<connection> parser_{this};
+
+boost::asio::ip::tcp::socket socket_;
+buffer_state  bs_;
+
+
+std::string content_length_;
+std::string date_str_;
+
+std::vector<std::unique_ptr<char,buffer_deleter>> in_buffers_;
+std::vector<boost::asio::const_buffer> buffers_;
+std::string response;
+
+
 };
 
 } //namespace scymnus

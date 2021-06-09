@@ -14,8 +14,9 @@ class hidden
 {
 
      static_assert(std::is_same_v<bool, T>, "template parameter of hidden template must be boolean. That is: hidden<bool>");
-    bool value_;
+
 public:
+    bool value_;
     constexpr hidden(T value) : value_(value)
     {}
     constexpr bool value() const{
@@ -44,32 +45,27 @@ public:
 template<class T>
 class min
 {
-    T value_;
 
 public:
-    constexpr min(T value) : value_{value}
+    T value;
+    constexpr min(T v) : value{v}
     {
     }
 
-    constexpr T value() const{
-        return value_;
-    }
 };
 
 
 template<class T>
 class max
 {
-    T value_;
 
 public:
-    constexpr max(T value) : value_{value}
+    T value;
+
+    constexpr max(T v) : value{}
     {
     }
 
-    constexpr T value() const{
-        return value_;
-    }
 };
 
 

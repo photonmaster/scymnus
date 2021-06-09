@@ -37,7 +37,7 @@ public:
 
 
 private:
-    static constexpr std::size_t chunk_size = 4096;
+    static constexpr std::size_t chunk_size = 512 * 1000;
     buffer_manager() = default;
     buffer_manager( const buffer_manager & ) = delete;
     buffer_manager & operator =( const buffer_manager &) = delete;

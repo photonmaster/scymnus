@@ -73,6 +73,8 @@ public:
 
     //TODO: add constraints in ResponseHeaders
 
+
+
     response(status_t<Status> st, const T& t, const ResponseHeaders& headers, context& ctx)
     {
         if (ctx.res.status_code){
@@ -86,6 +88,20 @@ public:
         ResponseHeaders::fill_headers(headers,ctx);
         ctx.res.body = v.dump();
     }
+
+
+    response(status_t<Status> st, const std::string& t, const ResponseHeaders& headers, context& ctx)
+    {
+        if (ctx.res.status_code){
+            return;
+        }
+
+        ctx.res.status_code = st;
+        ctx.res.add_header("Content-Type", "application/json");
+        ResponseHeaders::fill_headers(headers,ctx);
+        ctx.res.body = t;
+    }
+
     response(status_t<Status> st, const T& t, context& ctx)
     {
 
@@ -98,6 +114,15 @@ public:
         ctx.res.add_header("Content-Type", "application/json");
         ctx.res.status_code = st;
         ctx.res.body = v.dump();
+
+    }
+
+    response(status_t<Status> st, std::string t, context& ctx)
+    {
+
+        ctx.res.add_header("Content-Type", "text/plain");
+        ctx.res.status_code = st;
+        ctx.res.body = std::move(t);
 
     }
 

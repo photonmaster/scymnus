@@ -249,7 +249,7 @@ static constexpr auto status_codes = scymnus::ct_map<int,std::string_view,61>{
     };
 
 
-static constexpr std::string_view server_name{"scymnus v0.0.1"};
+static constexpr std::string_view server_name{"scymnus"};
 
 
 }

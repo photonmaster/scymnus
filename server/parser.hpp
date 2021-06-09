@@ -52,20 +52,17 @@ enum class parser_state : uint8_t {
 
 
 template<class Session>
-class  parser{
+class  parser {
 private:
 
     llhttp_t parser_{};
     Session* session_;
     std::pair<message_data_t,message_data_t> header_;
     // headers_container headers_;
-    std::string_view url_;  //TODO: what if url_ is not contiguous?
-
     parser_state parser_state_{parser_state::Init};
 
 public:
-
-    parser(Session* session) : session_{session}{
+    parser(Session* session) : session_{session} {
 
 #ifdef TEST_DEBUG
         std::cout << "parser called in thread:" << std::this_thread::get_id() << std::endl;
@@ -74,6 +71,12 @@ public:
         parser_.data = this;
 
 
+    }
+
+    void reset(){
+        parser_state_ = parser_state::Init;
+        header_ = {};
+        llhttp_reset(&parser_);
     }
 
     parser_state  state(){
@@ -96,8 +99,8 @@ public:
         //TODO: check if method is not supprted
         //route and call handler
 
-        self->session_->exec();
         self->parser_state_ = parser_state::MessageComplete;
+        self->session_->exec();
         return HPE_OK;
     }
 
@@ -119,11 +122,8 @@ public:
     static int on_url(llhttp_t* llhttp, const unsigned char *at, size_t length){
         parser<Session>* self = static_cast<parser<Session>*>(llhttp->data);
 
-        self->session_->ctx_.method = self->method();
-        self->session_->ctx_.raw_url = std::string{reinterpret_cast<const char*>(at), length};
+        self->session_->ctx_.raw_url.insert(self->session_->ctx_.raw_url.end(), at, at+length);
 
-        //create uri object
-        self->session_->ctx_.url = scymnus::uri<>{self->session_->ctx_.raw_url};
         self->parser_state_ = parser_state::Url;
 
         return HPE_OK;
@@ -132,6 +132,7 @@ public:
 
 
     static int on_body(llhttp_t* llhttp, const unsigned char *at, size_t length){
+
         parser<Session>* self = static_cast<parser<Session>*>(llhttp->data);
 
         //check if we are in bo
@@ -234,9 +235,11 @@ public:
 #ifdef TEST_DEBUG
         std::cout << "on headers complete" << std::endl;
 #endif
+
         auto self = static_cast<parser<Session>*>(llhttp->data);
         //add last header
         self->session_->ctx_.req.headers.emplace(std::move(self->header_.first), std::move(self->header_.second));
+
 
 #ifdef TEST_DEBUG
         std::cout << "total number of headers: " << self->session_->ctx_.req.headers.size();
@@ -245,22 +248,26 @@ public:
         }
 #endif
 
+        self->session_->ctx_.url = scymnus::uri<>{self->session_->ctx_.raw_url};
         self->parser_state_ = parser_state::HeadersComplete;
+
+        self->session_->ctx_.method = self->method();
+        //create uri object
         return HPE_OK;
     }
 
 
     static constexpr llhttp_settings_t settings_ {
-        on_message_begin,
+        nullptr,//on_message_begin,
         on_url,
-        on_status,
+        nullptr, //on_status,
         on_header_field,
         on_header_value,
         on_headers_complete,
         on_body,
         on_message_complete,
-        on_chunk_header,
-        on_chunk_complete
+        nullptr,//on_chunk_header,
+        nullptr,//on_chunk_complete
     };
 
 

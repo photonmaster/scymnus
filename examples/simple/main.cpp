@@ -7,8 +7,8 @@ using namespace scymnus;
 using ColorModel = model<
     field<"r", int, description("red")>,
     field<"g", int, description("green")>,
-    field<"b", int, description("blue")>,
-    properties<name("ColorModel"), description("Color coordinates")>
+    field<"b", int, description("blue")>//,
+    //properties<name("ColorModel"), description("Color coordinates")>
     >;
 
 
@@ -17,8 +17,8 @@ using PointModel = model<
     field<"id", std::optional<int>, description("Server side generated value")>, //server sets this
     field<"x", int, constraints::min(0), description("X coordinate of 3D point")>,
     field<"y", int, constraints::min(0), description("Y coordinate of 3D point")>,
-    field<"z", std::optional<int>, init<int>([](){return 2;}),  description("Z coordinate of 3D point")>,
-    field<"c", std::optional<ColorModel>,init<ColorModel>([](){return ColorModel{127,127,127};}),  description("Color details of point")>,
+    field<"z", std::optional<int>, init<[](){return 1;}>{},  description("Z coordinate of 3D point")>,
+    field<"c", std::optional<ColorModel>, init<[](){return ColorModel{127,127,127};}>{},  description("Color details of point")>,
     properties<name("PointModel"), description("A 2d point model used in example")>
     >;
 
@@ -41,7 +41,7 @@ int main(){
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("/swagger_resources/index.html");
 
 
 
@@ -73,7 +73,8 @@ int main(){
               {
                   auto p = body.get();
                   p.get<"id">() = points.size(); //code is not thread safe
-                  return response{status<200>, p, ctx};
+                  points[points.size()] = p;
+                  return response{status<204>, ctx};
 
               })
         .summary("create a point")

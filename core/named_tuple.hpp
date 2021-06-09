@@ -9,22 +9,15 @@
 #include <typeinfo>
 #include <string>
 #include <functional>
+#include <cstring>
 
-#include "utilities/utils.hpp"
 #include "meta/ct_string.hpp"
-#include "properties/constraints.hpp"
-#include "core/typelist.hpp"
-
-
-#include <unordered_map>
-#include <typeindex>
-
+#include "typelist.hpp"
 
 
 
 namespace scymnus {
 
-using namespace meta;
 
 
 //TODO: remove this from here
@@ -36,6 +29,8 @@ struct has_type;
 
 template <typename T, typename... Us>
 struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {};
+
+
 
 //template <template<typename> class T, typename... Us>
 //struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T<N>, Us>...> {};
@@ -155,21 +150,21 @@ public:
         return "s";
     }
 
-    static constexpr std::tuple<std::remove_const_t<decltype(p)>...> properties_{p...};
+    static constexpr std::tuple<std::remove_cvref_t<decltype(p)>...> properties_{p...};
 
     constexpr const char* name(){
-        if constexpr (has_name<std::remove_const_t<decltype(properties_)>>::value)
+        if constexpr (has_name<std::remove_cvref_t<decltype(properties_)>>::value)
         {
-            constexpr int idx = tl::index_if<is_name,decltype(properties_)>::value;
+            constexpr int idx = tl::index_if<is_name,std::remove_cvref_t<decltype(properties_)>>::value;
             return  std::get<idx>(properties_).str();
         }
         else
             return "";
     }
     constexpr const char* description(){
-        if constexpr (has_description<std::remove_const_t<decltype(properties_)>>::value)
+        if constexpr (has_description<std::remove_cvref_t<decltype(properties_)>>::value)
         {
-            constexpr int idx = tl::index_if<is_description,decltype(properties_)>::value;
+            constexpr int idx = tl::index_if<is_description,std::remove_cvref_t<decltype(properties_)>>::value;
             return  std::get<idx>(properties_).str();
         }
         else
@@ -225,7 +220,8 @@ class model :
     template <class Model, std::size_t... I>
     static constexpr decltype(auto) get_properties(std::index_sequence<I...>)
     {
-        return std::tuple{
+        //TODO: invistigate, we can't use CTAD as this will not work if model has one field.
+        return std::tuple<decltype(std::remove_cvref_t<decltype(std::get<I>(Model{}))>::properties)...>{
             std::remove_cvref_t<decltype(std::get<I>(Model{}))>::properties...
         };
     }
@@ -248,6 +244,7 @@ public:
 
     static constexpr  std::tuple properties
         = get_properties<fields_tuple>(std::make_index_sequence<object_size>{});
+
 
 
 
@@ -318,14 +315,15 @@ private:
 
 
 
-template<meta::ct_string N, auto Properties,class T>
+template<meta::ct_string N, class T, class Properties>
 struct field_wrapper
 {
-
-    constexpr field_wrapper() = default;
+    Properties properties;
+    constexpr field_wrapper(Properties&& prop) : properties(std::move(prop))
+    {}
 
     static constexpr const char* name = N.str();
-    static constexpr auto properties = Properties;
+//    static constexpr auto properties = Properties;
     using type = T;
 
 };
@@ -341,31 +339,19 @@ auto geta(const model<N...>& model) {
     //         using type = typename std::tuple_element<I,fields_>::type;
 
 
+    using field = typename std::tuple_element<I,fields_internal_type_>;
     using type = typename std::tuple_element<I,fields_internal_type_>::type;
-    constexpr const char* str = model.names[I];
-    constexpr auto properties = std::get<I>(model.properties);
 
-    constexpr size_t l = std::strlen(str);
+    constexpr const char* str = model.names[I];
+    //constexpr auto properties = std::get<I>(model.properties);
+
+    constexpr size_t l = strlen(str);
     constexpr meta::ct_string<l> a(str);
 
-    return field_wrapper<a,properties, type>();
+
+    return field_wrapper<a,type, decltype(std::get<I>(model.properties))>(std::get<I>(model.properties));
 
 }
-
-
-//     template<size_t I,class... N>
-//     auto get(const model<N...>& model) {
-
-//        using type = typename std::tuple_element<I, std::tuple<typename N::type...>>::type;
-//         constexpr const char* str = model.names[I];
-//         constexpr auto properties = std::get<I>(model.properties);
-
-//         constexpr size_t l = std::strlen(str);
-//         constexpr meta::ct_string<l> a(str);
-
-//         field_wrapper<a,properties, type> f(std::get<I>(model));
-//         return f;
-//     }
 
 
 
@@ -389,7 +375,6 @@ constexpr void for_each(const model<T...>& t, F&& f, std::index_sequence<I...>)
 {
     auto v = std::initializer_list<int>{(std::forward<F>(f)(geta<I>(t),std::get<I>(t)),0)...};
 }
-
 
 template <class... T, class F, std::size_t... I>
 constexpr void for_each(std::tuple<T...>&& t, F&& f, std::index_sequence<I...>)
@@ -439,13 +424,6 @@ using is_model = detail::is_model<std::decay_t<T>>;
 
 template<class T>
 constexpr bool is_model_v = detail::is_model<std::decay_t<T>>::value;
-
-
-
-
-//attach
-//takes in a std::tuple and a typlist
-//and outputs an object
 
 }//scymnus
 

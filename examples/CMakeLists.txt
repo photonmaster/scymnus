@@ -31,3 +31,4 @@ target_link_libraries(minimal ${Boost_LIBRARIES})
 target_link_libraries(simple scymnus)
 target_link_libraries(simple ${Boost_LIBRARIES})
 
+

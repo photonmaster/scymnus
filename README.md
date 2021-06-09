@@ -7,8 +7,9 @@ and heavily relying on templates.
 **This is a work in progress of pre-alpha quality**
 
 ## Usage
-- Scymnus can be compiled with gcc 9.1
-- Boost 1.70 is needed (Boost Asio, utils)
+- Scymnus can be compiled with gcc 10.3 (support for gcc 9.x versions has been dropped)
+
+- Boost 1.70 or later is needed (Boost Asio, utils)
 - cmake
 
 ## 3rd party tools included in source tree
@@ -54,7 +55,7 @@ int main(){
       api_manager::instance().add_consume_type("aplication/json");
       api_manager::instance().add_produce_type("aplication/json");
       api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+      api_manager::instance().swagger_path("/swagger_resources/index.html");
 ```
 
  `scymnus::app` is a singleton. We are taking a reference on it, named app,
@@ -100,7 +101,7 @@ int main(){
       api_manager::instance().add_consume_type("aplication/json");
       api_manager::instance().add_produce_type("aplication/json");
       api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+      api_manager::instance().swagger_path("/swagger_resources/index.html");
 
     auto& app = scymnus::app::instance();
 
@@ -175,7 +176,7 @@ using PointModel = model<
     field<"id", std::optional<int>, description("Server side generated value")>, //server sets this
     field<"x", int, constraints::min(0), description("X coordinate of 3D point")>,
     field<"y", int, constraints::min(0), description("Y coordinate of 3D point")>,
-    field<"z", std::optional<int>, init<int>([](){return 2;}),  description("Z coordinate of 3D point")>,
+    field<"z", std::optional<int>, init<[](){return 2;}>{},  description("Z coordinate of 3D point")>,
     properties<name("PointModel"), description("A 2d point model used in example")>
     >;
 ```
@@ -198,8 +199,8 @@ using PointModel = model<
     field<"id", std::optional<int>, description("Server side generated value")>, //server sets this
     field<"x", int, constraints::min(0), description("X coordinate of 3D point")>,
     field<"y", int, constraints::min(0), description("Y coordinate of 3D point")>,
-    field<"z", std::optional<int>, init<int>([](){return 2;}),  description("Z coordinate of 3D point")>,
-    field<"c", std::optional<ColorModel>,init<ColorModel>([](){return ColorModel{127,127,127};}),  description("Color details of point")>,
+    field<"z", std::optional<int>, init<[](){return 2;}>{}),  description("Z coordinate of 3D point")>,
+    field<"c", std::optional<ColorModel>,init<[](){return ColorModel{127,127,127};}>{},  description("Color details of point")>,
     properties<name("PointModel"), description("A 2d point model used in example")>
     >;
 ```
@@ -215,7 +216,7 @@ int main(){
     api_manager::instance().add_consume_type("aplication/json");
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
+    api_manager::instance().swagger_path("/swagger_resources/index.html");
 
     auto& app = scymnus::app::instance();
     
@@ -251,6 +252,9 @@ the response would look like:
 ```
 ### aspects
 Scymnus supports before and after aspects. An aspect is a piece of code that is executed by Scymnus before or after the main handler.
+
+
+
 
 #### example
 ```cpp

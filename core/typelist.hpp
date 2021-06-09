@@ -330,13 +330,13 @@ template <template <class T> class, typename, std::size_t pos = 0>
 struct index_if;
 
 template <template <class T> class Pred, typename T, std::size_t pos, typename... tail>
-struct index_if<Pred, const std::tuple<T, tail...>, pos> :
+struct index_if<Pred, std::tuple<T, tail...>, pos> :
     std::conditional<Pred<T>::value,
                      std::integral_constant<std::size_t, pos>,
-                     index_if<Pred, const std::tuple<tail...>, pos+1>>::type {};
+                     index_if<Pred, std::tuple<tail...>, pos+1>>::type {};
 
-template <template <class T> class Pred>
-struct index_if<Pred, const std::tuple<>> : std::integral_constant<std::size_t, npos> {};
+template <template <class T> class Pred,std::size_t pos>
+struct index_if<Pred, std::tuple<>,pos> : std::integral_constant<std::size_t, npos> {};
 
 
 

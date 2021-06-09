@@ -421,11 +421,6 @@ struct ci_hash
         return seed;
     }
 };
-
-
-
-using res_headers = std::unordered_multimap<std::string, std::string, ci_hash, insensitive_compare>;
-
 } //namespace scymnus
 
 

@@ -56,7 +56,7 @@ aspect_registrator<AspectName, Response> register_aspect<AspectName, Response>::
 //struct aspect;
 
 
-template<ct_string AspectName>
+template<meta::ct_string AspectName>
 class sink
 {
 public:

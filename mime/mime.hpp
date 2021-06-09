@@ -1,7 +1,7 @@
 #pragma once
 #include <map>
 #include <optional>
-
+#include <string>
 
 //REF: https://github.com/samuelneff/MimeTypeMap
 //with licence:

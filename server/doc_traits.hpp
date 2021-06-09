@@ -17,6 +17,7 @@
 
 
 #include "properties/defaulted.hpp"
+#include "properties/constraints.hpp"
 
 
 
@@ -188,12 +189,12 @@ struct traits<model<T...>> {
                      //TODO: handle hidden
 
 
-                     if constexpr(scymnus::has_type<typename constraints::hidden<bool>, properties>::value){
+//                     if constexpr(scymnus::has_type<typename constraints::hidden<bool>, properties>::value){
 
-                         //TODO: check why the if when moved to the if constexpr above eveything breaks
-                         if ( std::get<constraints::hidden<bool>>(f.properties).value())
-                             return;
-                     }
+//                         //TODO: check why the if when moved to the if constexpr above eveything breaks
+//                         if ( std::get<constraints::hidden<bool>>(f.properties).value())
+//                             return;
+//                     }
 
                      if(!(is_optional<std::decay_t<decltype(value)>>::value))
                          v["required"].push_back(f.name);
@@ -212,25 +213,31 @@ struct traits<model<T...>> {
 
                                  //TODO: check min vs max
                                  if constexpr(scymnus::has_type<constraints::min<nested_type>, properties>::value)
-                                     v["properties"][f.name]["minimum"] = std::get<constraints::min<nested_type>>(f.properties).value();
+                                     v["properties"][f.name]["minimum"] = std::get<constraints::min<nested_type>>(f.properties).value;
 
-                                 if constexpr(scymnus::has_type<init<nested_type>, properties>::value)
-                                     v["properties"][f.name]["default"] = std::get<init<nested_type>>(f.properties).value();
+
+                                 //check for init<> in  properties
+
+                                 if constexpr (has_init<properties>::value)
+                                 {
+                                     constexpr int idx = tl::index_if<is_init,properties>::value;
+                                     v["properties"][f.name]["default"] =   std::get<idx>(f.properties).value();
+                                 }
+
 
                                  if constexpr(scymnus::has_type<constraints::max<nested_type>, properties>::value)
-                                     v["properties"][f.name]["maximum"] = std::get<constraints::max<nested_type>>(f.properties).value();
+                                     v["properties"][f.name]["maximum"] = std::get<constraints::max<nested_type>>(f.properties).value;
                              }
 
                              else {
                                  //TODO: check min vs max
                                  if constexpr(scymnus::has_type<constraints::min<type>, properties>::value)
-                                     v["properties"][f.name]["minimum"] = std::get<constraints::min<type>>(f.properties).value();
+                                     v["properties"][f.name]["minimum"] = std::get<constraints::min<type>>(f.properties).value;
 
-                                 if constexpr(scymnus::has_type<init<type>, properties>::value)
-                                     v["properties"][f.name]["default"] = std::get<init<type>>(f.properties).value();
+
 
                                  if constexpr(scymnus::has_type<constraints::max<type>, properties>::value)
-                                     v["properties"][f.name]["maximum"] = std::get<constraints::max<type>>(f.properties).value();
+                                     v["properties"][f.name]["maximum"] = std::get<constraints::max<type>>(f.properties).value;
                              }
 
 
@@ -240,9 +247,9 @@ struct traits<model<T...>> {
 
                              //TODO: clean code below
 
-                             if constexpr (has_description<std::remove_const_t<decltype(f.properties)>>::value)
+                             if constexpr (has_description<properties>::value)
                              {
-                                 constexpr int idx = tl::index_if<is_description,decltype(f.properties)>::value;
+                                 constexpr int idx = tl::index_if<is_description,properties>::value;
                                  v["properties"][f.name]["description"] =   std::get<idx>(f.properties).str();
                              }
                              else
