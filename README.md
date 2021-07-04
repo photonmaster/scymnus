@@ -81,7 +81,7 @@ Finally we are starting the webservice.
 Swagger is accessible here: http://127.0.0.1:9090/api-doc
 
  ```cpp
-    app.listen("127.0.0.1", "9090");
+    app.listen("127.0.0.1", 9090);
     app.run();
 ```
 }
@@ -115,7 +115,7 @@ int main(){
         .description("Returns the sum of two integer numbers")
         .tag("calculator");
 
-    app.listen("127.0.0.1", "9090");
+    app.listen("127.0.0.1", 9090);
     app.run();
 }
 ```
@@ -408,7 +408,7 @@ int main(){
 
     /// Finally we are starting the webservice
     /// swagger is accessible here: http://127.0.0.1:9090/api-doc
-    app.listen("127.0.0.1", "9090");
+    app.listen("127.0.0.1", 9090);
     app.run();
 }
 ```
