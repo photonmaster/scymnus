@@ -6,10 +6,13 @@
 
 #include "server/http_context.hpp"
 #include "external/json.hpp"
+#include "core/named_tuples_utils.hpp"
+
+using json = nlohmann::json;
 
 namespace scymnus {
 
-using json = nlohmann::json;
+
 
 
 //TODO:add constraints of what must be in here
@@ -108,9 +111,7 @@ public:
         if (ctx.res.status_code){
             return;
         }
-        using nlohmann::to_json;
-        json v;
-        to_json(v, t);
+        json v = t;
         ctx.res.add_header("Content-Type", "application/json");
         ctx.res.status_code = st;
         ctx.res.body = v.dump();
