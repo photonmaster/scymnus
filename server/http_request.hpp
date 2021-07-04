@@ -11,7 +11,9 @@ namespace scymnus
 struct http_request
 {
 
-    headers_container headers;
+
+
+    headers_t headers;
     message_data_t body;
 
 
@@ -29,7 +31,7 @@ struct http_request
     {
         if (headers.count(field))
         {
-            return to_string(headers.find(field)->second);
+                return std::string{headers.find(field)->second};
         }
         return {};
     }

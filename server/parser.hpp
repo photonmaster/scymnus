@@ -9,7 +9,6 @@
 #include "headers_container.hpp"
 #include "url/url.hpp"
 #include "http/http_common.hpp"
-#include "server/app.hpp"
 
 
 namespace scymnus
@@ -57,7 +56,9 @@ private:
 
     llhttp_t parser_{};
     Session* session_;
-    std::pair<message_data_t,message_data_t> header_;
+    std::string header_field_;
+    std::string header_value_;
+
     // headers_container headers_;
     parser_state parser_state_{parser_state::Init};
 
@@ -70,14 +71,8 @@ public:
         llhttp_init(&parser_, HTTP_REQUEST,  &settings_);
         parser_.data = this;
 
-
     }
 
-    void reset(){
-        parser_state_ = parser_state::Init;
-        header_ = {};
-        llhttp_reset(&parser_);
-    }
 
     parser_state  state(){
         return  parser_state_;
@@ -123,11 +118,9 @@ public:
         parser<Session>* self = static_cast<parser<Session>*>(llhttp->data);
 
         self->session_->ctx_.raw_url.insert(self->session_->ctx_.raw_url.end(), at, at+length);
-
         self->parser_state_ = parser_state::Url;
 
         return HPE_OK;
-       // return HPE_USER;
     }
 
 
@@ -184,7 +177,6 @@ public:
 
     static int on_status(llhttp_t *, const unsigned char *at, size_t length){
         return HPE_OK;
-
     }
 
 
@@ -193,28 +185,28 @@ public:
         std::cout << "on header field" << std::endl;
 #endif
         parser<Session>* self = static_cast<parser<Session>*>(llhttp->data);
+        self->session_->header_size_ += length;
 
         if (self->parser_state_ == parser_state::HeaderValue){
             //a field-value pair is ready
 
 #ifdef TEST_DEBUG
-            std::cout << "adding header: ";
-            std::cout << "adding field: " << self->header_.first << " value: " << self->header_.second << std::endl;
+            std::cout << "adding header";
 #endif
-            self->session_->ctx_.req.headers.emplace(std::move(self->header_.first), std::move(self->header_.second));
-            self->header_ = {};
+            std::string header_key_;
+            self->session_->ctx_.req.headers.emplace(std::move(self->header_field_), std::move(self->header_value_));
+            self->header_field_.clear();
+            self->header_value_.clear();
         }
 
-        //we are in the middle of a field read: push back a fragment. (unlikely)
+
         if (self->parser_state_ == parser_state::HeaderField){
-            //adjust header value
-            std::string_view sv =  std::get<0>(self->header_.first);
-            self->header_.first = std::string_view{sv.data(), length + sv.size()};
+            self->header_field_.insert(self->header_field_.end(), at, at+length);
         }
 
         else
         {
-            self->header_.first = std::string_view{reinterpret_cast<const char*>(at), length};
+            self->header_field_.insert(self->header_field_.end(), at, at+length);
             self->parser_state_ = parser_state::HeaderField;
         }
         return HPE_OK;
@@ -225,49 +217,56 @@ public:
         std::cout << "on header value" << std::endl;
 #endif
         auto self = static_cast<parser<Session>*>(llhttp->data);
-        self->header_.second = std::string_view{reinterpret_cast<const char*>(at), length};
+        self->session_->header_size_ += length;
 
-        self->parser_state_ = parser_state::HeaderValue;
+//        if (self->session_->header_size_ > )
+//            return HPE_USER;
+
+
+        //we are in the middle of a field read: push back a fragment. (unlikely)
+        if (self->parser_state_ == parser_state::HeaderValue){
+            self->header_value_.insert(self->header_value_.end(), at, at+length);
+        }
+
+        else
+        {
+            self->header_value_.insert(self->header_value_.end(), at, at+length);
+
+            self->parser_state_ = parser_state::HeaderValue;
+        }
+
+
+
+
         return HPE_OK;
     }
 
     static int on_headers_complete(llhttp_t* llhttp){
-#ifdef TEST_DEBUG
-        std::cout << "on headers complete" << std::endl;
-#endif
 
         auto self = static_cast<parser<Session>*>(llhttp->data);
         //add last header
-        self->session_->ctx_.req.headers.emplace(std::move(self->header_.first), std::move(self->header_.second));
+        self->session_->ctx_.req.headers.emplace(std::move(self->header_field_), std::move(self->header_value_));
 
 
-#ifdef TEST_DEBUG
-        std::cout << "total number of headers: " << self->session_->ctx_.req.headers.size();
-        for (const auto& f: self->session_->ctx_.req.headers){
-            std::cout << "field: " << f.first << " value: " << f.second << std::endl;
-        }
-#endif
 
         self->session_->ctx_.url = scymnus::uri<>{self->session_->ctx_.raw_url};
         self->parser_state_ = parser_state::HeadersComplete;
-
         self->session_->ctx_.method = self->method();
-        //create uri object
         return HPE_OK;
     }
 
 
     static constexpr llhttp_settings_t settings_ {
-        nullptr,//on_message_begin,
-        on_url,
-        nullptr, //on_status,
-        on_header_field,
-        on_header_value,
-        on_headers_complete,
-        on_body,
-        on_message_complete,
-        nullptr,//on_chunk_header,
-        nullptr,//on_chunk_complete
+                nullptr,//on_message_begin,
+                on_url,
+                nullptr, //on_status,
+                on_header_field,
+                on_header_value,
+                on_headers_complete,
+                on_body,
+                on_message_complete,
+                nullptr,//on_chunk_header,
+                nullptr,//on_chunk_complete
     };
 
 
