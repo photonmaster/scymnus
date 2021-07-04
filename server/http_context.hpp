@@ -30,9 +30,9 @@ struct context
         req.reset();
         res.reset();
         end_ = false;
-        query = {};
+        query.reset();
         url = {};
-        path_details = {};
+        path_details.reset();
         patterned_url.clear();
         raw_url.clear();
     }
