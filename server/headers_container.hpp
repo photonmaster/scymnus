@@ -402,7 +402,25 @@ struct insensitive_compare
 };
 
 
+using header_t = std::variant<std::string_view, std::string>;
+
+
+
+struct insensitive_compare_2
+{
+    bool operator()(const std::string_view& l, const std::string_view& r ) const
+    {
+        return  std::lexicographical_compare(std::cbegin(l),std::cend(l),std::cbegin(r),std::cend(r),iless);
+
+    }
+};
+
+//TODO:headers_container not used now
 using headers_container = std::multimap<message_data_t,message_data_t,insensitive_compare>;
+
+
+using headers_t = std::multimap<std::string_view,std::string_view,insensitive_compare_2>;
+
 
 
 //headers for http response
