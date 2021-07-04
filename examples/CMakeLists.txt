@@ -6,6 +6,7 @@ add_executable(metadata metadata/main.cpp)
 add_executable(aspects aspects/main.cpp)
 add_executable(minimal minimal/main.cpp)
 add_executable(simple simple/main.cpp)
+add_executable(models models/main.cpp)
 
 
 add_link_options(-nostartfiles)
@@ -31,4 +32,7 @@ target_link_libraries(minimal ${Boost_LIBRARIES})
 target_link_libraries(simple scymnus)
 target_link_libraries(simple ${Boost_LIBRARIES})
 
+
+target_link_libraries(models scymnus)
+target_link_libraries(models ${Boost_LIBRARIES})
 
