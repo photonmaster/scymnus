@@ -189,12 +189,6 @@ struct traits<model<T...>> {
                      //TODO: handle hidden
 
 
-//                     if constexpr(scymnus::has_type<typename constraints::hidden<bool>, properties>::value){
-
-//                         //TODO: check why the if when moved to the if constexpr above eveything breaks
-//                         if ( std::get<constraints::hidden<bool>>(f.properties).value())
-//                             return;
-//                     }
 
                      if(!(is_optional<std::decay_t<decltype(value)>>::value))
                          v["required"].push_back(f.name);
