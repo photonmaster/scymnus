@@ -10,15 +10,18 @@
 #include <string>
 #include <functional>
 #include <cstring>
+#include <functional>
+
 
 #include "meta/ct_string.hpp"
+#include "meta/ct_utils.hpp"
+#include "core/traits.hpp"
+#include "properties/defaulted.hpp"
 #include "typelist.hpp"
 
 
 
 namespace scymnus {
-
-
 
 //TODO: remove this from here
 using std::tuple;
@@ -29,21 +32,6 @@ struct has_type;
 
 template <typename T, typename... Us>
 struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {};
-
-
-
-//template <template<typename> class T, typename... Us>
-//struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T<N>, Us>...> {};
-
-
-#include <functional>
-
-
-int constexpr str_length(const char* str)
-{
-    return *str ? 1 + str_length(str + 1) : 0;
-}
-
 
 
 
@@ -159,7 +147,7 @@ public:
             return  std::get<idx>(properties_).str();
         }
         else
-            return "";
+        return "";
     }
     constexpr const char* description(){
         if constexpr (has_description<std::remove_cvref_t<decltype(properties_)>>::value)
@@ -168,7 +156,7 @@ public:
             return  std::get<idx>(properties_).str();
         }
         else
-            return "";
+        return "";
     }
 
 
@@ -202,10 +190,12 @@ struct field
 template<class T> using internal_type = typename T::type;
 
 
+
+
 template <class... N>
 class model :
-    public
-    tl::transform<internal_type, tl::remove_if<is_properties, std::tuple<N...>, std::tuple<>>>
+        public
+        tl::transform<internal_type, tl::remove_if<is_properties, std::tuple<N...>, std::tuple<>>>
 {
 
     template <class Model, std::size_t... I>
@@ -230,6 +220,7 @@ class model :
     using fields_internal_type = tl::transform<internal_type, fields_tuple>;
 
 public:
+
     using fields_internal_type::tuple;
     constexpr model() = default;
     constexpr model(model&& obj) = default;
@@ -240,10 +231,10 @@ public:
     static constexpr size_t object_size = std::tuple_size<fields_tuple>::value;
 
     static constexpr  std::array<const char* const, object_size> names
-        = get_names<fields_tuple>(std::make_index_sequence<object_size>{});
+    = get_names<fields_tuple>(std::make_index_sequence<object_size>{});
 
     static constexpr  std::tuple properties
-        = get_properties<fields_tuple>(std::make_index_sequence<object_size>{});
+    = get_properties<fields_tuple>(std::make_index_sequence<object_size>{});
 
 
 
@@ -263,19 +254,67 @@ public:
     constexpr auto&
     get()
     {
-        return std::get<index(u.str())>(*this);
+        constexpr int idx = index(u.str());
+        static_assert(idx >= 0, "named_tuple: get<>() called with a non existing field name");
+
+        return std::get<idx>(*this);
+    }
+
+
+    template<meta::ct_string u>
+    constexpr const auto&
+    get() const
+    {
+        constexpr int idx = index(u.str());
+        static_assert(idx >= 0, "named_tuple: get<>() called with a non existing field name");
+
+        return std::get<idx>(*this);
     }
 
 
 
 
+    ///if a field is of an optional type:
+    ///if an init meta-property is present and a value has not been set, then the init meta-property is applied
+    ///otherwise field is default constructed
+    template<class T>
+    constexpr auto&
+    operator [] (T field) {
+        constexpr int idx = index(field());
+        static_assert(idx >= 0, "named_tuple: operator[] called with a non existing field name");
+
+        using type = std::remove_cvref_t<decltype(std::get<idx>(*this))>;
+
+        if constexpr (is_optional_v<type>) {
+            if (std::get<idx>(*this)) {
+                return  *(std::get<idx>(*this));
+            }
+
+            using properties_t = std::remove_cvref_t<decltype(std::get<idx>(properties))>;
+
+            if constexpr (has_init<properties_t>::value) {
+                constexpr int prop_idx = tl::index_if<is_init,properties_t>::value;
+                using initializer = typename std::tuple_element<prop_idx,properties_t>::type;
+                std::get<idx>(*this) =   initializer{}.value();
+                return *(std::get<idx>(*this));
+            }
+            else {
+                std::get<idx>(*this) = typename type::value_type{};
+                return *(std::get<idx>(*this));
+            }
+        }
+
+        else {
+            return std::get<idx>(*this);
+        }
+    }
 
     static constexpr const char* name(){
         using prop = tl::select_if<is_properties, std::tuple<N...>, std::tuple<>>::type;
         if constexpr(std::tuple_size<prop>::value)
-            return std::get<0>(prop{}).name();
+                return std::get<0>(prop{}).name();
         else
-            return "";
+        return "";
     }
 
 
@@ -283,31 +322,19 @@ public:
         using prop = tl::select_if<is_properties, std::tuple<N...>, std::tuple<>>::type;
 
         if constexpr(std::tuple_size<prop>::value)
-            return std::get<0>(prop{}).description();
-       else
-         return "";
+                return std::get<0>(prop{}).description();
+        else
+        return "";
     }
 
-
-
-private:
-
-    //c++14 check for equality
-    static constexpr bool equal( char const* lhs, char const* rhs)
-    {
-        while (*lhs || *rhs)
-            if (*lhs++ != *rhs++)
-                return false;
-        return true;
-    }
 
     static constexpr int index(char const* field){
         for (int i = 0; i < names.size(); i++){
-            if (equal(names[i], field))
+            if (ct_strcmp(names[i], field))
                 return i;
         }
+        return -1;
     }
-
 };
 
 
@@ -323,7 +350,7 @@ struct field_wrapper
     {}
 
     static constexpr const char* name = N.str();
-//    static constexpr auto properties = Properties;
+    //    static constexpr auto properties = Properties;
     using type = T;
 
 };
@@ -336,15 +363,9 @@ auto geta(const model<N...>& model) {
 
     using fields_ = tl::remove_if<is_properties, tl::typelist<N...>, std::tuple<>>;
     using fields_internal_type_ = tl::transform<internal_type, fields_>;
-    //         using type = typename std::tuple_element<I,fields_>::type;
-
-
-    using field = typename std::tuple_element<I,fields_internal_type_>;
     using type = typename std::tuple_element<I,fields_internal_type_>::type;
 
     constexpr const char* str = model.names[I];
-    //constexpr auto properties = std::get<I>(model.properties);
-
     constexpr size_t l = strlen(str);
     constexpr meta::ct_string<l> a(str);
 
@@ -434,5 +455,5 @@ namespace std {
 
 template< class... Types >
 class tuple_size< scymnus::model<Types...> >
-    : public std::integral_constant<std::size_t, scymnus::model<Types...>::object_size> { };
+        : public std::integral_constant<std::size_t, scymnus::model<Types...>::object_size> { };
 }//namespace std

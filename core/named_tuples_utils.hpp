@@ -10,6 +10,9 @@
 
 
 namespace nlohmann {
+
+
+
 template <typename T>
 struct adl_serializer<std::optional<T>> {
     static void to_json(json& j, const std::optional<T>& opt) {
@@ -31,54 +34,64 @@ struct adl_serializer<std::optional<T>> {
 };
 
 
-}
 
+template <typename... T>
+struct adl_serializer<scymnus::model<T...>> {
+    static void to_json(json& j, const scymnus::model<T...>& p) {
+        //foreach
+        for_each(p,[&j](const auto& f, const auto& v) {
+            using properties = std::remove_cvref_t<decltype(f.properties)>;
+            using type = std::remove_cvref_t<decltype(v)>;
 
-namespace scymnus {
+            if constexpr (scymnus::is_optional_v<type>){
+                if (!v){
+                    using nested_type = type::value_type;
 
-using json = nlohmann::json;
-
-
-
-
-template<class NamedTuple, typename = std::enable_if_t<is_model_v<NamedTuple>,void>>
-void to_json(json& j, const NamedTuple& p) {
-    //foreach
-    for_each(p,[&j](const auto& f, const auto& v) {
-        //to_json(j, v);
-        j[f.name] = v;
-    });
-}
-
-
-
-template<class NamedTuple, typename = std::enable_if_t<is_model_v<NamedTuple>,void>>
-void from_json(const json& j, NamedTuple& p) {
-    for_each(p,[&](auto&& f, auto&& v) {
-
-        using properties = std::remove_cvref_t<decltype(f.properties)>;
-        using type = std::remove_cvref_t<decltype(v)>;
-
-
-        if constexpr (is_optional_v<type>){
-            if (!j.contains(f.name)){
-                using nested_type = type::value_type;
-
-                if constexpr (has_init<properties>::value)
-                {
-                    constexpr int idx = tl::index_if<is_init,properties>::value;
-                    v = std::get<idx>(f.properties).value();
+                    if constexpr (scymnus::has_init<properties>::value)
+                    {
+                        constexpr int idx = scymnus::tl::index_if<scymnus::is_init,properties>::value;
+                        j[f.name] = std::get<idx>(f.properties).value();
+                        return;
+                    }
                 }
-
+                else {
+                    j[f.name] = *v;
+                    return;
+                }
             }
+
+            j[f.name] = v;
+        });
+    }
+
+    static void from_json(const json& j, scymnus::model<T...>& p) {
+        for_each(p,[&](auto&& f, auto&& v) {
+
+            using properties = std::remove_cvref_t<decltype(f.properties)>;
+            using type = std::remove_cvref_t<decltype(v)>;
+
+
+            if constexpr (scymnus::is_optional_v<type>){
+                if (!j.contains(f.name)){
+                    using nested_type = type::value_type;
+
+                    if constexpr (scymnus::has_init<properties>::value)
+                    {
+                        constexpr int idx = scymnus::tl::index_if<scymnus::is_init,properties>::value;
+                        v = std::get<idx>(f.properties).value();
+                    }
+
+                }
+                else {
+                    j.at(f.name).get_to(v);
+                }
+            }
+
             else {
                 j.at(f.name).get_to(v);
             }
-        }
+        });
+    }
+};
 
-        else {
-            j.at(f.name).get_to(v);
-        }
-    });
 }
-}// namespace scymnus
