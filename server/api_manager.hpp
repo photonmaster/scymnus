@@ -4,6 +4,7 @@
 #include <typeindex>
 #include <set>
 
+
 #include "external/json.hpp"
 #include "doc_traits.hpp"
 
@@ -45,9 +46,6 @@ public:
 
 
     void add_aspect_response(const std::string& aspect_name, int status, const json& description){
-
-    //     swagger_["tags"] += v;
-
 
     json v;
     v["status"] = std::to_string(status);
@@ -192,8 +190,11 @@ public:
         swagger_path_ = (std::move(path));
     }
 
-
    inline std::string describe() {
+       return swagger_description_;
+   }
+
+   void  prepare_description() {
         swagger_["swagger"] = "2.0";
         swagger_["host"]  =  host();
         swagger_["info"]["title"] = title();
@@ -233,19 +234,21 @@ public:
             swagger_["definitions"]  =  doc_types::get_definitions();
         }
 
-        return api_manager::instance().swagger_.dump(3);
-    }
+        swagger_description_ = swagger_.dump(3);
+   }
 
 
-    std::string swagger_description;
+
+
     json aspect_responses_;
     json endpoint_responses_;
-
     json swagger_;
     std::string swagger_path_;
 
 private:
-    friend class api;
+    friend class app;
+    std::string swagger_description_;
+
     api_manager(const api_manager&) = delete;
     api_manager(api_manager&&) = delete;
     api_manager() = default;

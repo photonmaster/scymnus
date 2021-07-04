@@ -65,7 +65,6 @@ int main(){
 
 
 
-
     /// scymnus::appis a singleton. we are taking a reference to each instance, named app
     /// that we will be using in the rest of the code
     auto& app = scymnus::app::instance();
@@ -181,7 +180,7 @@ int main(){
     /// swagger is accessible here: http://10.0.2.15:9090/api-doc
 
 
-    app.listen("127.0.0.1", "9090");
+    app.listen("127.0.0.1", 9090);
     app.run();
 }
 

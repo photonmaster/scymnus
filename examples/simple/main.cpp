@@ -1,7 +1,8 @@
 #include "server/app.hpp"
-
+#include "core/named_tuples_utils.hpp"
 
 using namespace scymnus;
+using namespace nlohmann;
 
 
 using ColorModel = model<
@@ -32,9 +33,17 @@ using error_model = model<
 std::map<int, PointModel> points{};
 
 
+using app_settings = model<
+field<"x", int>
+>;
+
 
 
 int main(){
+
+
+   auto f = init_settings<app_settings>();
+
     api_manager::instance().name("Your name");
     api_manager::instance().email("your@email.com");
     api_manager::instance().host("127.0.0.1:9090");
@@ -42,7 +51,6 @@ int main(){
     api_manager::instance().add_produce_type("aplication/json");
     api_manager::instance().add_scheme("http");
     api_manager::instance().swagger_path("/swagger_resources/index.html");
-
 
 
     auto& app = scymnus::app::instance();
@@ -54,8 +62,8 @@ int main(){
         catch(std::exception& exp){
 
             error_model error {1423, exp.what()};
-            json v;
-            to_json(v, error);
+
+            json v = error;
             ctx.res.add_header("Content-Type", "application/json");
             ctx.res.status_code = 500;
             ctx.res.body = v.dump();
@@ -111,6 +119,6 @@ int main(){
         .tag("points");
 
 
-    app.listen("127.0.0.1", "9090");
+    app.listen("127.0.0.1", 9090);
     app.run();
 }

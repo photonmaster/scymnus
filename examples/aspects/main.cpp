@@ -163,7 +163,6 @@ int main(){
     api_manager::instance().swagger_path("/swagger_resources/index.html");
 
 
-
     auto& app = scymnus::app::instance();
 
 
@@ -283,7 +282,7 @@ int main(){
     /// swagger is accessible here: http://10.0.2.15:9090/api-doc
 
 
-    app.listen("127.0.0.1", "9090");
+    app.listen("127.0.0.1", 9090);
     app.run();
 }
 
