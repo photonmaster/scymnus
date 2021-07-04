@@ -43,7 +43,7 @@ detail::final_action<F> finally(F f) {
 
 
 
-constexpr size_t page_size = 512 * 1000;
+constexpr size_t page_size = 2 * 10 * 1000;
 
 
 struct buffer_state
@@ -64,23 +64,35 @@ class parser;
 class connection
 {
     context ctx_{};
-    void* current_buffer;
+    char* current_buffer;
 public:
 
 
-    connection(boost::asio::io_context& context) : socket_{context}
+    connection(boost::asio::io_context& context)
+        : socket_{context},
+          timer_{context}
     {
 #ifdef TEST_DEBUG
         std::cout << "connection created in thread:" << std::this_thread::get_id() << std::endl;
 #endif
-
+        set_timer(idle_timeout_);
     }
 
     ~connection()
     {
-        #ifdef TEST_DEBUG
+        cancel_timer();
+#ifdef TEST_DEBUG
         std::cout << "connection destructed in thread:" << std::this_thread::get_id() << std::endl;
-        #endif
+#endif
+    }
+
+    //called on first use
+    void idle_timeout_setup(uint32_t seconds){
+        if (seconds){
+            last_activity_tp_ = std::chrono::steady_clock::now();
+            idle_timeout_ = seconds;
+            set_timer(seconds);
+        }
     }
 
     boost::asio::ip::tcp::socket& socket()
@@ -89,9 +101,10 @@ public:
     }
 
     void start(){
+
         current_buffer =  (buffer_manager::get().allocate());
-        in_buffers_.emplace_back( static_cast<char*>(current_buffer));
-        bs_.watermark = static_cast<char*>(current_buffer);
+        in_buffers_.emplace_back(current_buffer);
+        bs_.watermark = current_buffer;
 
 
 #ifdef TEST_DEBUG
@@ -104,9 +117,9 @@ public:
         //TODO: check this
         if (bs_.capacity < 128){
             current_buffer =  (buffer_manager::get().allocate());
-            in_buffers_.emplace_back( static_cast<char*>(current_buffer));
+            in_buffers_.emplace_back(current_buffer);
 
-            bs_.watermark = static_cast<char*>(current_buffer);
+            bs_.watermark = current_buffer;
             bs_.capacity = page_size;
             bs_.new_buff = true;
 
@@ -114,6 +127,8 @@ public:
 #ifdef TEST_DEBUG
         std::cout << "read called in thread:" << std::this_thread::get_id() << std::endl;
 #endif
+
+        last_activity_tp_ = std::chrono::steady_clock::now();
 
         socket_.async_read_some(boost::asio::buffer(bs_.watermark, bs_.capacity),
                                 [self = boost::intrusive_ptr(this), this](const boost::system::error_code& ec, std::size_t bytes_transferred)
@@ -125,7 +140,10 @@ public:
                 bs_.capacity -= bytes_transferred;
                 bs_.watermark += bytes_transferred;
 
+                last_activity_tp_ = std::chrono::steady_clock::now();
+
                 if (err == HPE_OK) {
+
                     if (parser_.state() != parser_state::MessageComplete)
                         read();
                 }
@@ -139,7 +157,7 @@ public:
                 }
             }
             else{
-               //close();
+                //dtor will be called closing the connection
             }
         }
         );
@@ -207,7 +225,7 @@ public:
         response.append("\r\n");
 
 
-           if (!keep_alive_){
+        if (!keep_alive_){
             response.append( "Connection:close\r\n");
         }
 
@@ -226,68 +244,109 @@ public:
 #ifdef TEST_DEBUG
         std::cout << "write called in thread:" << std::this_thread::get_id() << std::endl;
 #endif
-
-
         boost::asio::async_write(socket_, boost::asio::buffer(response)/*buffers_*/, [self = boost::intrusive_ptr(this), this]
                                  (const boost::system::error_code& ec, size_t) {
             if (ec) {
                 //destructor will be called in this case
                 return;
             }
-            ctx_.reset();
+            last_activity_tp_ = std::chrono::steady_clock::now();
+
+            reset();
 
             if (keep_alive_) {
                 read();
-        }
-    });
-}
+            }
+        });
+    }
 
 
-//intrusive_ptr handling
+    //intrusive_ptr handling
 
-inline friend void intrusive_ptr_add_ref(connection* c) noexcept{
-    ++c->ref_count_;
-}
+    inline friend void intrusive_ptr_add_ref(connection* c) noexcept{
+        ++c->ref_count_;
+    }
 
-inline friend void intrusive_ptr_release(connection* c) noexcept{
-    if(--c->ref_count_ == 0)
-        delete c;
-}
+    inline friend void intrusive_ptr_release(connection* c) noexcept{
+        if(--c->ref_count_ == 0)
+            delete c;
+    }
 private:
 
-void close(){
-    if (is_closed_)
-        return;
+    void close(){
+        if (is_closed_)
+            return;
 
-    boost::system::error_code ec;
-    socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-    socket_.close(ec);
-    is_closed_ = true;
-}
+        cancel_timer();
+        boost::system::error_code ec;
+        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        socket_.close(ec);
+        is_closed_ = true;
+    }
+
+    void set_timer(uint32_t seconds) {
+        if (!idle_timeout_)
+            return;
+
+        timer_.expires_from_now(std::chrono::seconds(seconds));
+        timer_.async_wait([this](boost::system::error_code const &ec) {
+            if (ec) {
+                return;
+            }
+            auto now =  std::chrono::steady_clock::now();
+
+            if (last_activity_tp_ + std::chrono::seconds(idle_timeout_) < now){
+
+                auto f = std::chrono::duration_cast<std::chrono::seconds>(now - last_activity_tp_);
+                set_timer(f.count());
+
+            }
+            else{
+                close();
+            }
+        });
+    }
 
 
+    void cancel_timer() {
+        if (!idle_timeout_)
+            return;
+        boost::system::error_code ec;
+        timer_.cancel(ec);
+    }
 
-bool is_closed_{false};
-bool keep_alive_{false};
+    void reset() {
+        ctx_.reset();
+        in_buffers_.clear();
+        header_size_ = 0;
+    }
 
-
-std::size_t ref_count_{0};
-
-friend class parser <connection>;
-parser<connection> parser_{this};
-
-boost::asio::ip::tcp::socket socket_;
-buffer_state  bs_;
-
-
-std::string content_length_;
-std::string date_str_;
-
-std::vector<std::unique_ptr<char,buffer_deleter>> in_buffers_;
-std::vector<boost::asio::const_buffer> buffers_;
-std::string response;
+    bool is_closed_{false};
+    bool keep_alive_{false};
 
 
+    std::size_t ref_count_{0};
+
+    friend class parser <connection>;
+    parser<connection> parser_{this};
+
+    boost::asio::ip::tcp::socket socket_;
+    buffer_state  bs_;
+
+
+    std::string content_length_;
+    std::string date_str_;
+
+    std::vector<std::unique_ptr<char,buffer_deleter>> in_buffers_;
+
+    uint32_t idle_timeout_{0};
+    boost::asio::steady_timer timer_;
+    std::chrono::time_point<std::chrono::steady_clock> last_activity_tp_;
+    //std::chrono::time_point<std::chrono::steady_clock> idle_time_tp_{std::chrono::seconds(idle_timeout_) + last_activity_tp_};
+
+
+    std::string response;
+    uint16_t header_size_{0};
 };
 
 } //namespace scymnus
