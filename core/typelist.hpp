@@ -16,9 +16,8 @@ template<class T> struct identity
     using type = T;
 };
 
-
 template<class... T> struct typelist {};
-typedef struct empty_type{} empty;
+struct empty_t{};
 
 //size
 namespace detail {
@@ -411,7 +410,7 @@ struct normalise<P,L1<H1, R1...>,L2<H2, R2...>,Result> {
         <
             P<H1>::value,
             typename normalise<P,L1<R1...>,L2<R2...>,typename append<Result,H2>::type>::type,
-            typename normalise<P,L1<R1...>,L2<H2,R2...>,typename append<Result,empty_type>::type>::type
+            typename normalise<P,L1<R1...>,L2<H2,R2...>,typename append<Result,empty_t>::type>::type
             >::type;
 };
 
@@ -422,7 +421,7 @@ struct normalise<P,L1<>,L2,Result> {
 };
 template<template<class> class P,template<class...> class L1,class H1, class...R1, template<class...> class  L2,class Result>
 struct normalise<P,L1<H1, R1...>,L2<>,Result> {
-    using type = typename normalise<P,L1<R1...>,L2<>,typename append<Result,empty_type>::type>::type;
+    using type = typename normalise<P,L1<R1...>,L2<>,typename append<Result,empty_t>::type>::type;
 };
 
 

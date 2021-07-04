@@ -50,29 +50,6 @@ struct tuple_sink {
 
 }
 
-//REF: https://stackoverflow.com/questions/81870/is-it-possible-to-print-a-variables-type-in-standard-c/56766138#56766138
-
-template <typename T>
-constexpr auto type_name() noexcept {
-    std::string_view name = "Error: unsupported compiler", prefix, suffix;
-#ifdef __clang__
-    name = __PRETTY_FUNCTION__;
-    prefix = "auto type_name() [T = ";
-    suffix = "]";
-#elif defined(__GNUC__)
-    name = __PRETTY_FUNCTION__;
-    prefix = "constexpr auto type_name() [with T = ";
-    suffix = "]";
-#elif defined(_MSC_VER)
-    name = __FUNCSIG__;
-    prefix = "auto __cdecl type_name<";
-    suffix = ">(void) noexcept";
-#endif
-    name.remove_prefix(prefix.size());
-    name.remove_suffix(suffix.size());
-    return name;
-}
-
 
 
 
@@ -382,8 +359,8 @@ public:
         return {nullptr, path_parameters};
     }
 
-        trie() : head_{} {
-        }
+    trie() : head_{} {
+    }
 
     trie(const trie& tr) = delete;
 
@@ -511,7 +488,7 @@ struct param_visitor<body_param<Name,T>, Path>
         //TODO: check  if body is not contiguous and use to_string because currently nlohamann does not support incremental parsing
         json value = json::parse(std::get<0>(ctx.req.body));
 
-        from_json(value,model);
+        nlohmann::from_json(value,model);
         return model;
     }
 };
@@ -726,11 +703,10 @@ struct router_parameters {
         if(tag_){
             api_manager::instance().add_tag(*tag_);
             api_manager::instance().swagger_["paths"][path][m]["tags"] += *tag_;
-
-            if (!api_manager::instance().endpoint_responses_["paths"][path][m].is_null()) {
-                api_manager::instance().swagger_["paths"][path][m]["responses"] =
-                api_manager::instance().endpoint_responses_["paths"][path][m]["responses"];
-            }
+        }
+        if (!api_manager::instance().endpoint_responses_["paths"][path][m].is_null()) {
+            api_manager::instance().swagger_["paths"][path][m]["responses"] =
+                    api_manager::instance().endpoint_responses_["paths"][path][m]["responses"];
         }
     }
 };
