@@ -6,7 +6,7 @@ It tries to solve the lack of reflection in c++ by using c++20 feutures
 
 **This is a work in progress**
 
-> *Scymnus* is an ancient greek word for lion cub
+> *Scymnus* is an ancient greek word for a lion cub
 ## Building
 For building *Scymnus* the following are needed:
 
@@ -50,13 +50,8 @@ Finally we are starting the webservice:
 ```
 }
 
-
-
-
-
-
-
 complete code:
+
 ```cpp
 #include "server/app.hpp"
 
@@ -86,6 +81,10 @@ For serving the swagger documentation of our webservice a folder named
 The `swagger_resources` folder should contain all the files in the `external/swagger/dist` directory of the source tree.  
 
 Swagger is accessible here: http://127.0.0.1:8080/api-doc
+
+This is how  `/sum/{x}/{y}' endpoint looks like:
+![swagger sum screenshot](https://user-images.githubusercontent.com/12844823/129976580-4434960a-9f57-4296-9625-f8967f1a347d.png)
+
 
 ##### Query and header parameters
 
@@ -180,7 +179,7 @@ For each field in a model, meta-properties can be defined.
 A model itself can also have meta-properties.
 Two properties are avaliable at model level: `name` and `description`
 
-Each field can have each own properties. The following field properties can be used:
+Each field can have its own properties. The following field properties can be used:
 - description
 - min
 - max
@@ -220,7 +219,7 @@ using PointModel = model<
     field<"id", std::optional<int>, description("Server side generated value")>, //server sets this
     field<"x", int, constraints::min(0), description("X coordinate of 3D point")>,
     field<"y", int, constraints::min(0), description("Y coordinate of 3D point")>,
-    field<"z", std::optional<int>, init<[](){return 2;}>{}),  description("Z coordinate of 3D point")>,
+    field<"z", std::optional<int>, init<[](){return 1;}>{}),  description("Z coordinate of 3D point")>,
     field<"c", std::optional<ColorModel>,init<[](){return ColorModel{127,127,127};}>{},  description("Color details of point")>,
     properties<name("PointModel"), description("A 2d point model used in example")>
     >;
@@ -266,6 +265,11 @@ the response would look like:
   "z": 1
 }
 ```
+This is how  `/points' endpoint looks like:
+
+![image](https://user-images.githubusercontent.com/12844823/129978521-5f6ace30-bb3b-4900-afcf-581a75303f85.png)
+
+
 ### aspects
 Scymnus supports before and after aspects. An aspect is a piece of code that is executed by Scymnus before or after the main handler.
 
