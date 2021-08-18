@@ -1,5 +1,5 @@
 ## Introduction
-**Scymnus** is a web service framework for c++.
+**Scymnus** is a c++ web services framework.
 Swagger documentation is generated automatically without macros.
 It tries to solve the lack of reflection in c++ by using c++20 feutures
 
