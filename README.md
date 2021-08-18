@@ -2,89 +2,59 @@
 **Scymnus** is a web service framework for c++.
 Swagger documentation is generated automatically without macros.
 It tries to solve the lack of reflection in c++ by using c++20 feutures
-and heavily relying on templates.
 
-**This is a work in progress of pre-alpha quality**
 
-## Usage
-- Scymnus can be compiled with gcc 10.3 (support for gcc 9.x versions has been dropped)
+**This is a work in progress**
 
+> *Scymnus* is an ancient greek word for lion cub
+## Building
+For building *Scymnus* the following are needed:
+
+- gcc 10.3 or greater
 - Boost 1.70 or later is needed (Boost Asio, utils)
-- cmake
-
-## 3rd party tools included in source tree
-- llhttp parser (https://github.com/nodejs/llhttp) 
-- nlohmann/json (https://github.com/nlohmann/json)
-- url parsing is taken from Microsoft/cpprestsdk (https://github.com/Microsoft/cpprestsdk)
-- MimeTypeMap by Samuel Neff, (https://github.com/samuelneff/MimeTypeMap)
-
-## useful resources
-### github 
-
-
-from https://github.com/envoyproxy (envoy proxy)
-the implemetation of `inline std::string_view ltrim(std::string_view source)` 
-was taken
+- cmake 
 
 ## Examples and snippets
 ### hello world
 
-first a using directive for makign things easier
+first a using directive for making things easier:
 ```cpp
 using namespace scymnus;
 ```
 
-we are using the `api_manager::instance()` to setup some basic properties of our service.
-in order to be able to browse swagger documentation a path to swagger resources
-must be set first by calling ` api_manager::instance().swagger_path()`
-the path must be relative to the executable.
-E.g.: 
-`api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");`
-
-all needed files can be found in `external/swagger/dist` directory.
-
-
+In the beggining of the `main()` function, we are taking a reference to the instance of the singleton class `scymnus::app`, that we will be using in the rest of the code:
 
 ```cpp
-int main(){
-      api_manager::instance().name("your name");
-      api_manager::instance().title("Calculator service");
-      api_manager::instance().version(0,1);
-      api_manager::instance().email("your email");
-      api_manager::instance().host("127.0.0.1:9090");
-      api_manager::instance().add_consume_type("aplication/json");
-      api_manager::instance().add_produce_type("aplication/json");
-      api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("/swagger_resources/index.html");
-```
-
- `scymnus::app` is a singleton. We are taking a reference on it, named app,
- that we will be using in the rest of the code
- 
- ```cpp
+int main() {
     auto& app = scymnus::app::instance();
 ```
-our service will expose a single GET endpoint. Two path integer parameters named  `x` and `y` must be given by clients. The service will return the sum of the two integers 
- ```cpp
+
+our service will expose a single `GET` endpoint. Two path integer parameters named x and y must be given by clients. The service will return the sum of the two numbers
+
+```cpp
     app.route([](path_param<"x", int> x,path_param<"y", int> y, context& ctx)
                   -> response_for<http_method::GET, "/sum/{x}/{y}">
-           {
-               auto sum = x.get() + y.get();
-               return response{status<200>, sum, ctx};
+              {
+                  auto sum = x.get() + y.get();
+                  return ctx.write(status<200>, sum);
               })
         .summary("Integer addition")
-        .description("Returns the sum of two integer numbers")
+        .description("Returns the sum of two integer numbers. The two numbers are given as path parameters")
         .tag("calculator");
 ```
-
-Finally we are starting the webservice.
-Swagger is accessible here: http://127.0.0.1:9090/api-doc
-
+ 
+Finally we are starting the webservice:
  ```cpp
-    app.listen("127.0.0.1", 9090);
+    app.listen();
     app.run();
 ```
 }
+
+
+
+
+
+
 
 complete code:
 ```cpp
@@ -93,32 +63,81 @@ complete code:
 using namespace scymnus;
 
 int main(){
-      api_manager::instance().name("your name");
-      api_manager::instance().title("Calculator service");
-      api_manager::instance().version(0,1);
-      api_manager::instance().email("your email");
-      api_manager::instance().host("127.0.0.1:9090");
-      api_manager::instance().add_consume_type("aplication/json");
-      api_manager::instance().add_produce_type("aplication/json");
-      api_manager::instance().add_scheme("http");
-      api_manager::instance().swagger_path("/swagger_resources/index.html");
-
     auto& app = scymnus::app::instance();
 
     app.route([](path_param<"x", int> x,path_param<"y", int> y, context& ctx)
                   -> response_for<http_method::GET, "/sum/{x}/{y}">
-           {
-               auto sum = x.get() + y.get();
-               return response{status<200>, sum, ctx};
-           })
+              {
+                  auto sum = x.get() + y.get();
+                  return ctx.write(status<200>, sum);
+              })
         .summary("Integer addition")
-        .description("Returns the sum of two integer numbers")
+        .description("Returns the sum of two integer numbers. The two numbers are given as path parameters")
         .tag("calculator");
 
-    app.listen("127.0.0.1", 9090);
+    app.listen();
     app.run();
 }
 ```
+##### Enabling swagger
+For serving the swagger documentation of our webservice a folder named
+`swagger_resources` must be created first **at the same location with the executable**.
+
+The `swagger_resources` folder should contain all the files in the `external/swagger/dist` directory of the source tree.  
+
+Swagger is accessible here: http://127.0.0.1:8080/api-doc
+
+##### Query and header parameters
+
+In the above snippet arguments of type `path_param<>`  were used as arguments.
+Similar to `path_param<>` arguments one can use `query_param<>`, `header_param<>` or
+`body_param<>` arguments for introducing query, header of body parameters:
+
+
+***Query parameters***
+```cpp
+    app.route([](query_param<"a", int> a,query_param<"b", int> b, context& ctx)
+                  -> response_for<http_method::GET, "/midpoint">
+              {
+                  auto mid = std::midpoint(a.get() , b.get());
+                  return ctx.write(status<200>, mid);
+              })
+        .summary("midpont value")
+        .description("Returns the midpoint of two integer numbers. The two numbers are given as query parameters")
+        .tag("calculator");
+```
+***Header parameters***
+```cpp
+    app.route([](header_param<"value", int> value, context& ctx)
+                  -> response_for<http_method::GET, "/abs">
+              {
+                  auto abs = std::abs(value.get());
+                  return ctx.write(status<200>, abs);
+              })
+        .summary("Absolute value")
+        .description("Returns the absolute value of an integer number. The number is given as a header parameter")
+        .tag("calculator");
+```
+
+***Body parameter***
+```cpp
+    app.route([](body_param<"body",std::vector<int>> body, context& ctx)
+                  -> response_for<http_method::PUT, "/minimum">
+              {
+                  if (body.get().empty())
+                      return ctx.write(status<400>, "input must not be empty");
+
+                  auto it = std::min_element(body.get().begin(), body.get().end());
+
+                  return ctx.write_as<http_content_type::JSON>(status<200>, *it);
+              })
+        .summary("Minimum value")
+        .description("Minimum value of a set of integer numbers. The numbers are given in the body of the request")
+        .tag("calculator");
+```
+please check the `calculator` example for more information.
+
+
 ### models
 Let's say that a simple web service must be created for manipulating 3D points.
 The following `struct` looks like a good candidate for presenting a 3D point:
@@ -149,18 +168,19 @@ using PointModel = model<
 Now it is easy to serialise to json:
 ```cpp
 auto p = PointModel{1,2,3};  // a point with x == 1, y == 2, z == 3
-json v;
-to_json(v, p);
+json v = p;
+
 //prints:
 //p: {"x":1,"y":2,"z":3}
 std::cout << "p: " << v.dump() << '\n';
 ```
 
 ##### Adding meta-properties
-For each field in a model meta-properties can be defined.
-A model can have meta-properties on each own.
-Two properties are avaliable at model level: name and description
-Each field can have each own properties. The following field properties can be defined:
+For each field in a model, meta-properties can be defined.
+A model itself can also have meta-properties.
+Two properties are avaliable at model level: `name` and `description`
+
+Each field can have each own properties. The following field properties can be used:
 - description
 - min
 - max
@@ -180,7 +200,8 @@ using PointModel = model<
     properties<name("PointModel"), description("A 2d point model used in example")>
     >;
 ```
-`init` meta property is used to assign a default value for a field that is not present in a request.
+`init` meta property is used for assigning a default value for a field that is not present in a request. the type of the field must be an optional in this case.
+
 
 Of course models can be nested. Let's add an optional color property to the 3d point by first defining a ColorModel model:
 
@@ -204,37 +225,32 @@ using PointModel = model<
     properties<name("PointModel"), description("A 2d point model used in example")>
     >;
 ```
+> std::optional<> is used whenever a type is not required 
 
 now with the models in place, we are ready to define the controller for creating objects:
 ```cpp
 std::map<int, PointModel> points{}; //map for holding created points
 
 int main(){
-    api_manager::instance().name("Your name");
-    api_manager::instance().email("your@email.com");
-    api_manager::instance().host("127.0.0.1:9090");
-    api_manager::instance().add_consume_type("aplication/json");
-    api_manager::instance().add_produce_type("aplication/json");
-    api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("/swagger_resources/index.html");
-
     auto& app = scymnus::app::instance();
-    
+
     app.route([](body_param<"body", PointModel> body,
                  context& ctx) -> response_for<http_method::POST, "/points">
               {
                   auto p = body.get();
                   p.get<"id">() = points.size(); //code is not thread safe
-                  return response{status<200>, p, ctx};
-                  
+                  points[points.size()] = p;
+                  return ctx.write(status<204>);
+
               })
         .summary("create a point")
         .description("create a point")
         .tag("points");
+...
 ```
 when sending the request below:
 ```
-curl -X POST "http://127.0.0.1:9090/points" -H  "accept: aplication/json" -H  "Content-Type: aplication/json" -d "{ \"x\": 0,  \"y\": 0  }"
+curl -X POST "http://127.0.0.1:8080/points" -H  "accept: aplication/json" -H  "Content-Type: aplication/json" -d "{ \"x\": 0,  \"y\": 0  }"
 ```
 the response would look like:
 ```javascript
@@ -247,180 +263,103 @@ the response would look like:
   "id": 0,
   "x": 0,
   "y": 0,
-  "z": 2
+  "z": 1
 }
 ```
 ### aspects
 Scymnus supports before and after aspects. An aspect is a piece of code that is executed by Scymnus before or after the main handler.
 
+##### Defining aspects
+Aspects are callable objects inheriting from `aspect_base<>`. Each aspect must have a name and their call operator must return a `sink<>` object:
 
-
-
-#### example
 ```cpp
-using PointModel = model<
-    field<"id", std::optional<int>>, //server sets this
-    field<"x", int, constraints::min(0)>,
-    field<"y", int,constraints::min(0)>,
-    field<"z", int, constraints::min(0)>,
-    properties<name("3D point"), description("A 3d point model")>
-    >;
+struct log_request_aspect : aspect_base<"log_request", hook_type::before> {
+    sink<"log_request"> operator()(context& ctx)
+```
+the "name" parameter in `sink<>`  type  **must** be the same to the  "name" parameter in the `aspect_base<>` base class.
 
-///the follwing map is our data source:
-std::map<int, PointModel> points{};
+##### Example
+Below, two aspects are defined. The first one  is executed before the main handler(`hook_type::before`) and the second one is executed after the main handler (`hook_type::after`).  
 
-/// The endpoints that will be exposed by our service,  will operate
-///on the above map.
-
-///Defining aspects.
-/// An aspect is a mechanism for separating cross cutting concerns from the rest of the code.
-/// E.g. checking if a token in a request is valid, is a functionality that is ///shared between all of the controllers of our web service.
-/// The code  that validates tokens can be seperated in an aspect and the the aspect /// to be enabled for the controllers needed
-
-///Let's define an aspect that validates the meta-properties of PointModel
-///In point model we define that the minimum value of all fields must be 0.
-///We will write an aspect for checking the minimum values of PointModel fields.
-
-/// Each aspect must have a name:
-
-template<class T>
-struct validate_aspect : aspect_base<"validate"> {
-    template <typename F, typename V>
-    void validate(F&& field, const V& value){
-        if constexpr(is_model_v<F>){
-            for_each(field,[](auto&& f, auto& v) {
-                validate(f);
-            });
-        }
-        else {
-            using properties = std::remove_cvref_t<decltype(field.properties)>;
-            if constexpr(scymnus::has_type<typename constraints::min<int>, properties>::value){
-                 auto v = std::get<constraints::min<int>>(field.properties).value();
-                if (value < v)
-                    throw std::runtime_error{"field value is less than minimum value allowed"};
-            }
-        }
-    }
-
-
-    sink<"validate"> operator()(body_param<"body", T> body, context& ctx)
+```cpp
+struct log_request_aspect : aspect_base<"log_request", hook_type::before> {
+    sink<"log_request"> operator()(context& ctx)
     {
-        //validate
-        try {
-        for_each(body.get(),[this](auto&& f, auto& v) {
-            validate(f,v);
-        });
+        std::cout << "Request:" << '\n';
+        std::cout << ctx.raw_url() << '\n';
+        for(auto& [key, value] :ctx.request().headers()){
+            std::cout << key << ": " << value << '\n';
         }
-        catch(std::runtime_error& exp) {
-            return response{status<500>, std::string(exp.what()),  ctx};
-        }
-
+        std::cout << ctx.request().body() << '\n';
+        std::cout.flush();
         return {};
     }
 };
 
+struct log_response_aspect : aspect_base<"log_response", hook_type::after> {
+    sink<"log_response"> operator()(const context& ctx)
+    {
+        std::cout << "Response:" << '\n';
+        std::cout << ctx.response().status_code() << '\n';
+        for(auto& [key, value] :ctx.response().headers()){
+            std::cout << key << ": " << value << '\n';
+        }
+        std::cout << '\n' << ctx.response().body() << '\n';
+        std::cout.flush();
+        return {};
+    }
+};
 
+```
 
-///Aspects can return a response.
-///Also, it is possible for aspects to introduce a header or a query param.
-///The swagger document is updated with the
-///responses returned from aspects as well for the headers or query parameters
-/// that aspects introduce.
-/// (path parameters and body parameters are not updating the swagger doc)
-///
-/// Also aspects have a hook_type
-///hook_type has one of two possible values:
-///
-/// hook_type:before (default)  and
-/// hook_type::after
-///
-/// aspects with hook_type before, will be exectud before the main handler
-/// aspects with hook_type after, will be executed after the main handler
-///
-///Let's introduce a new header, named operator of type int .
-/// The operator header will be checked by an aspect.
-/// If operator is different than the values 1 or 2 an 500 http status will be returned
+Aspects can be enabled for an andpoint like is shown below:
 
+```cpp
+    app.route([](body_param<"body", json> body,context& ctx)->response_for<http_method::POST, "/echo"> {
 
+        return ctx.write_as<http_content_type::JSON>(status<200>,ctx.request_body());
+    }, log_request_aspect{},
+       log_response_aspect{}
+    ).summary("echo back the json payload in the request")
+     .tag("echo");
+```
+> check the `echo_aspects` and `aspects` examples for details
+
+Aspects can return a response or introduce  header or query parameters as can been seen here:
+
+```cpp
 struct check_operator_aspect : aspect_base<"check_operator", hook_type::before> {
     sink<"check_operator"> operator()(header_param<"operator", int> oper, context& ctx)
     {
         auto v = oper.get();
         if (v != 1 && v != 2){
-            return response{status<500>, std::string{"Given operator is not supprted"},  ctx};
+            return ctx.write_as<http_content_type::JSON>(status<500>, std::string{"Given operator is not supported"});
         }
         return {};
     }
 };
-
-
-/// Let's define a before aspect that will log the url requested:
-
-struct log_request_aspect : aspect_base<"log_url", hook_type::before> {
-    sink<"log_request"> operator()(context& ctx)
-    {
-        std::cout << "URL IS: " << ctx.raw_url << std::endl;
-        return {};
-    }
-};
-
-/// Let's define an after aspect that will log the response body:
-
-struct log_response_aspect : aspect_base<"log_url", hook_type::after> {
-    sink<"log_response"> operator()(context& ctx)
-    {
-        std::cout << "RESPONSE IS: " << ctx.res.body << std::endl;
-        return {};
-    }
-};
-
-///lets now define our main function
-
-int main(){
-    /// let's add some
-    api_manager::instance().name("Your name");
-    api_manager::instance().email("your@email.com");
-    api_manager::instance().host("127.0.0.1:9090");
-    api_manager::instance().add_consume_type("aplication/json");
-    api_manager::instance().add_produce_type("aplication/json");
-    api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("scymnus/external/swagger/dist/index.html");
-
-    auto& app = scymnus::app::instance();
-
-
-    app.route([](body_param<"body", PointModel> body, context& ctx) -> response_for<http_method::POST, "/points">
-           {
-               auto p = body.get();
-               p.get<"id">() = points.size(); //code is not thread safe
-
-               points[points.size()] = p;
-               return response{status<200>, p, ctx};
-           },
-           log_request_aspect{},
-           validate_aspect<PointModel>{},
-           check_operator_aspect{},
-           log_response_aspect{}
-           )
-        .summary("Create a point")
-        .description("Create a point resource. The id will be returned in the response")
-        .tag("points");
-
-    /// Finally we are starting the webservice
-    /// swagger is accessible here: http://127.0.0.1:9090/api-doc
-    app.listen("127.0.0.1", 9090);
-    app.run();
-}
 ```
-### TODO
-- better HTTP 1.1 support
-- memory reclamation policies for buffer_pool (now memory is never released only reused)
-- bug fixing
-- better swagger support e.g. enums
-- tests
-- https support
-- authorization, jwt tokens
-- websockets
-- documentation
 
+
+The swagger document is updated with the responses returned from aspects as well as with the headers or query parameters used for calling an aspect
+(path parameters and body parameters are not updating the swagger doc)
+
+  
+
+
+### TODO
+- [x] HTTP pipelining
+- [ ] HTTPS
+- [ ] compression
+- [ ] chunked transfer encoding
+- [ ] enumerations in swagger
+- [ ] jwt tokens
+- [ ] websockets
+
+## 3rd party tools included in source tree
+- llhttp parser (https://github.com/nodejs/llhttp) 
+- nlohmann/json (https://github.com/nlohmann/json)
+- url parsing is taken from Microsoft/cpprestsdk (https://github.com/Microsoft/cpprestsdk)
+- MimeTypeMap by Samuel Neff, (https://github.com/samuelneff/MimeTypeMap)
+- decimal_from function by Alf P. Steinbach  (https://ideone.com/nrQfA8)
 
