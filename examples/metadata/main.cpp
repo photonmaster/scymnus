@@ -37,15 +37,6 @@ std::map<int, PointModel> points{};
 
 
 int main(){
-    /// let's add some
-    api_manager::instance().name("Your name");
-    api_manager::instance().email("your@email.com");
-    api_manager::instance().host("127.0.0.1:9090");
-    api_manager::instance().add_consume_type("aplication/json");
-    api_manager::instance().add_produce_type("aplication/json");
-    api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("/swagger_resources/index.html");
-
 
     auto& app = scymnus::app::instance();
 
@@ -63,7 +54,7 @@ int main(){
                   p.get<"id">() = points.size(); //code is not thread safe
 
                   points[points.size()] = p;
-                  return response{status<200>, p, ctx};
+                  return ctx.write(status<200>, p);
               })
         .summary("Create a point")
         .description("Create a point resource. The id will be returned in the response")
@@ -103,9 +94,9 @@ int main(){
                   -> response_for<http_method::GET, "/points/{id}">
               {
                   if (points.count(id.get()))
-                      return response{status<200>, points[id.get()], ctx};
+                      return ctx.write(status<200>, points[id.get()]);
                   else
-                      return response{status<404>, std::string("Point not found"), ctx};
+                      return ctx.write_as<http_content_type::JSON>(status<404>, std::string("Point not found"));
 
               })
         .summary("get a point")
@@ -127,10 +118,9 @@ int main(){
                   auto count = points.erase(id.get());
 
                   if (count)
-                      return response{status<204>, ctx};
+                      return ctx.write(status<204>);
                   else
-                      return response{status<404>, std::string("Point not found"), ctx};
-
+                      return ctx.write_as<http_content_type::JSON>(status<404>, std::string{"Point not found"});
               })
         .summary("remove a point")
         .description("remove a point by id")
@@ -147,7 +137,7 @@ int main(){
                   for(auto element : points)
                       data.push_back(element.second);
 
-                  return response(status<200>,data, ctx);
+                  return ctx.write(status<200>,data);
 
               })
         .summary("get all points")
@@ -160,7 +150,7 @@ int main(){
     /// swagger is accessible here: http://10.0.2.15:9090/api-doc
 
 
-    app.listen("127.0.0.1", 9090);
+    app.listen();
     app.run();
 }
 

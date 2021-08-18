@@ -8,8 +8,8 @@ using namespace nlohmann;
 using ColorModel = model<
     field<"r", int, description("red")>,
     field<"g", int, description("green")>,
-    field<"b", int, description("blue")>//,
-    //properties<name("ColorModel"), description("Color coordinates")>
+    field<"b", int, description("blue")>,
+    properties<name("ColorModel"), description("Color coordinates")>
     >;
 
 
@@ -33,47 +33,18 @@ using error_model = model<
 std::map<int, PointModel> points{};
 
 
-using app_settings = model<
-field<"x", int>
->;
 
+template<class T>
+using paginated_model = model<
+    field<"contents",T>,
+    field<"totalPages",uint32_t>,
+    field<"totalItems",uint32_t>,
+    field<"page",uint32_t>
+    >;
 
 
 int main(){
-
-
-   auto f = init_settings<app_settings>();
-
-    api_manager::instance().name("Your name");
-    api_manager::instance().email("your@email.com");
-    api_manager::instance().host("127.0.0.1:9090");
-    api_manager::instance().add_consume_type("aplication/json");
-    api_manager::instance().add_produce_type("aplication/json");
-    api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("/swagger_resources/index.html");
-
-
     auto& app = scymnus::app::instance();
-
-    app.set_excpetion_handler([](context& ctx){
-        try{
-            throw;
-        }
-        catch(std::exception& exp){
-
-            error_model error {1423, exp.what()};
-
-            json v = error;
-            ctx.res.add_header("Content-Type", "application/json");
-            ctx.res.status_code = 500;
-            ctx.res.body = v.dump();
-        }
-    });
-
-
-    //    app.route(scymnus::get_swagger_description_controller{});
-    //    app.route(scymnus::api_doc_controller{});
-    //    app.route(scymnus::swagger_controller_files{});
 
 
     app.route([](body_param<"body", PointModel> body,
@@ -82,7 +53,7 @@ int main(){
                   auto p = body.get();
                   p.get<"id">() = points.size(); //code is not thread safe
                   points[points.size()] = p;
-                  return response{status<204>, ctx};
+                  return ctx.write(status<204>);
 
               })
         .summary("create a point")
@@ -90,35 +61,72 @@ int main(){
         .tag("points");
 
 
-    //TODO: check path params aainst endpoint
+    //TODO: check path params against endpoint
     app.route([](path_param<"id", int> id, context& ctx)
                   -> response_for<http_method::GET, "/points/{id}">
               {
                   if (points.count(id.get()))
-                      return response{status<200>, points[id.get()], ctx};
+                      return ctx.write_as<http_content_type::JSON>(status<200>, points[id.get()]);
                   else
-                      return response{status<404>, error_model{1, "point id not found"}, ctx};
+                      return ctx.write(status<404>, error_model{1, "point id not found"});
 
               }).summary("get a point")
         .description("retrieve a point by id")
         .tag("points");
 
 
-    app.route([](context& ctx)
+    app.route_internal([](path_param<"id", int> id, context& ctx)
+                           -> response_for<http_method::GET, "/test/{id}">
+                       {
+                           if (points.count(id.get()))
+                               return ctx.write(status<200>, points[id.get()]);
+                           else
+                               return ctx.write(status<404>, error_model{1, "point id not found"});
+
+                       });
+
+
+
+
+
+
+    app.route([](query_param<"page", int16_t> page,query_param<"pageSize", uint16_t> size, context& ctx)
                   -> response_for<http_method::GET, "/points">
               {
+
+                  auto ps = size.get();
+                  auto p = page.get();
+
+                  if (ps == 0){
+                      return ctx.write(status<400>, error_model{2, "pageSize must be greater than 0"});
+                  }
+
+                  std::size_t total_elements = points.size();
+                  auto total_pages = total_elements % ps != 0?total_elements / ps + 1:total_elements / ps;
+
+
+                  if (p > total_pages){
+                      return ctx.write(status<400>,
+                                       error_model{3, "requested page is greater than the total number of pages"});
+                  }
+
                   std::vector<PointModel> data;
+                  auto start = std::next(points.begin(), p * ps);
+                  auto end = (p + 1) * ps > total_elements?points.end():std::next(points.begin(),(p + 1) * ps);
 
-                  for(auto element : points)
-                      data.push_back(element.second);
 
-                  return response(status<200>,data, ctx);
+                  for (auto it = start; it != end; it++) {
+                      data.push_back((*it).second);
+                  }
+
+                  auto model = paginated_model<std::vector<PointModel>>{data, total_pages,total_elements,p};
+                  return ctx.write(status<200>,model);
 
               }).summary("get points")
         .description("retrieve a list of points")
         .tag("points");
 
 
-    app.listen("127.0.0.1", 9090);
+    app.listen();
     app.run();
 }

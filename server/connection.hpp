@@ -1,279 +1,283 @@
 #pragma once
 
-#include <iostream>
-#include <boost/intrusive_ptr.hpp>
 #include <boost/asio/ip/tcp.hpp>
-
-#include "parser.hpp"
-#include "buffer_pool.hpp"
-#include "boost/asio/write.hpp"
-#include "server/router.hpp"
-#include "date_manager.hpp"
-#include "external/decimal_from.hpp"
-
-
+#include <boost/intrusive_ptr.hpp>
+#include <iostream>
 #include <memory_resource>
 
-namespace scymnus
-{
+#include "boost/asio/write.hpp"
+#include "ct_settings.hpp"
+#include "date_manager.hpp"
+#include "external/decimal_from.hpp"
+#include "external/http_parser/llhttp.h"
+#include "parser.hpp"
+#include "server/memory_resource_manager.hpp"
+#include "server/router.hpp"
 
-namespace detail{
+namespace scymnus {
 
-template <typename F>
-struct final_action {
-    final_action(F f) : clean_{f} {
+namespace detail {
 
-    }
+template <typename F> struct final_action {
+    final_action(F f) : clean_{f} {}
     ~final_action() {
-        if(enabled_) clean_();
+        if (enabled_)
+            clean_();
     }
-    void disable() {
-        enabled_ = false;
-    };
+    void disable() { enabled_ = false; };
+
 private:
     F clean_;
     bool enabled_{true};
 };
 
+} // namespace detail
+
+template <typename F> detail::final_action<F> finally(F f) {
+    return detail::final_action<F>(f);
 }
 
-template <typename F>
-detail::final_action<F> finally(F f) {
-    return detail::final_action<F>(f); }
+class connection {
 
-
-
-constexpr size_t page_size = 2 * 10 * 1000;
-
-
-struct buffer_state
-{
-    char* watermark;
-    uint8_t current_chunk;
-    size_t capacity{page_size};
-
-    bool new_buff{false};
-
-};
-
-
-
-template <typename T>
-class parser;
-
-class connection
-{
-    context ctx_{};
-    char* current_buffer;
 public:
+    connection(boost::asio::io_context &context)
+        : socket_{context}, timer_{context} {
 
-
-    connection(boost::asio::io_context& context)
-        : socket_{context},
-          timer_{context}
-    {
-#ifdef TEST_DEBUG
-        std::cout << "connection created in thread:" << std::this_thread::get_id() << std::endl;
-#endif
-        set_timer(idle_timeout_);
+        llhttp_init(&parser_, HTTP_REQUEST, &settings_);
+        parser_.data = this;
     }
 
-    ~connection()
-    {
+    ~connection() {
         cancel_timer();
-#ifdef TEST_DEBUG
-        std::cout << "connection destructed in thread:" << std::this_thread::get_id() << std::endl;
-#endif
+        std::cout << "connection destructed in thread:"
+                  << std::this_thread::get_id() << std::endl;
     }
 
-    //called on first use
-    void idle_timeout_setup(uint32_t seconds){
-        if (seconds){
+    // called on first use
+    void idle_timeout_setup(uint32_t seconds) {
+        if constexpr (idle_time_tracking == false)
+            return;
+        if (seconds) {
             last_activity_tp_ = std::chrono::steady_clock::now();
             idle_timeout_ = seconds;
             set_timer(seconds);
         }
     }
 
-    boost::asio::ip::tcp::socket& socket()
-    {
-        return socket_;
-    }
+    boost::asio::ip::tcp::socket &socket() { return socket_; }
 
-    void start(){
+    void read() {
 
-        current_buffer =  (buffer_manager::get().allocate());
-        in_buffers_.emplace_back(current_buffer);
-        bs_.watermark = current_buffer;
+        socket_.async_read_some(
+            boost::asio::buffer(buffer_), [self = boost::intrusive_ptr(this), this](
+                                              const boost::system::error_code &ec,
+                                              std::size_t bytes_transferred) {
+                if (!ec) {
+                    if constexpr (idle_time_tracking) {
+                        last_activity_tp_ = std::chrono::steady_clock::now();
+                    }
 
+                    llhttp_errno_t err = process(buffer_.data(), bytes_transferred);
 
-#ifdef TEST_DEBUG
-        std::cout << "read called in thread:" << std::this_thread::get_id() << std::endl;
-#endif
-        read();
-    }
+                    if (err == HPE_OK) {
+                        if (response_.empty()) {
+                            read();
+                            return;
+                        }
+                        do_write(should_keep_alive());
+                    }
 
-    void read(){
-        //TODO: check this
-        if (bs_.capacity < 128){
-            current_buffer =  (buffer_manager::get().allocate());
-            in_buffers_.emplace_back(current_buffer);
+                    else {
 
-            bs_.watermark = current_buffer;
-            bs_.capacity = page_size;
-            bs_.new_buff = true;
-
-        }
-#ifdef TEST_DEBUG
-        std::cout << "read called in thread:" << std::this_thread::get_id() << std::endl;
-#endif
-
-        last_activity_tp_ = std::chrono::steady_clock::now();
-
-        socket_.async_read_some(boost::asio::buffer(bs_.watermark, bs_.capacity),
-                                [self = boost::intrusive_ptr(this), this](const boost::system::error_code& ec, std::size_t bytes_transferred)
-        {
-            if (!ec)
-            {
-                //TODO: handle parsing errors
-                llhttp_errno_t err = parser_.process(bs_.watermark, bytes_transferred);
-                bs_.capacity -= bytes_transferred;
-                bs_.watermark += bytes_transferred;
-
-                last_activity_tp_ = std::chrono::steady_clock::now();
-
-                if (err == HPE_OK) {
-
-                    if (parser_.state() != parser_state::MessageComplete)
-                        read();
+                        ctx_.write(status<400>);
+                        complete_request(ctx_, false);
+                    }
+                } else {
+                    std::cout << "error in async_read_some(): " << ec.message()
+                              << std::endl;
                 }
-                else {
-#ifdef TEST_DEBUG
-                    std::cout << "HTTP parsing error: " << parser_.get_error(err) << std::endl;
-#endif
-                    ctx_.res.status_code = 400;
-                    keep_alive_ = false;
-                    complete_request();
+            });
+    }
+
+    llhttp_errno exec() {
+
+        router_.exec(ctx_);
+        ctx_.reset();
+        return HPE_OK;
+    }
+
+    void complete_request(context &ctx, bool keep_alive = true) {
+        response_.clear();
+        ctx.reset();
+        do_write(keep_alive);
+    }
+
+    // boost::asio::buffer(response_.data(), response_.size())
+
+    template <typename... Args> auto const_sequence(Args &&...args) {
+        return std::array<boost::asio::const_buffer, sizeof...(Args)>{
+            boost::asio::buffer(args)...};
+    }
+
+    void do_write(bool keep_alive = true) {
+        boost::asio::async_write(
+            socket_, boost::asio::buffer(response_),
+            [self = boost::intrusive_ptr(this),
+             keep_alive](const boost::system::error_code &ec, size_t s) {
+                if (ec) {
+                    return;
                 }
-            }
-            else{
-                //dtor will be called closing the connection
-            }
-        }
-        );
+                self->reset();
+
+                if (keep_alive) {
+                    self->read();
+                }
+            });
     }
 
+    // intrusive_ptr handling
 
-    void check_keep_alive(){
-
-        auto header_value = ctx_.req.get_header_value("connection");
-
-        if (parser_.minor_version() == 1){
-            if (header_value && iequals(*header_value,"close"))
-                keep_alive_ = false;
-            else
-                keep_alive_ = true;
-        }
-        else if (parser_.minor_version() == 0){
-            if (header_value && iequals(*header_value,"keep-alive"))
-                keep_alive_ = true;
-            else
-                keep_alive_ = false;
-        }
-    }
-
-
-
-    void exec()
-    {
-        check_keep_alive();
-        router{}.exec(ctx_);
-        complete_request();
-    };
-
-
-
-    void complete_request()
-    {
-
-        response.clear();
-
-        static constexpr std::string_view success_response = "HTTP/1.1 200 OK\r\n";
-
-        if (ctx_.res.status_code.value() == 200)
-            response.append("HTTP/1.1 200 OK\r\n");
-        else{
-            auto status = status_codes.at(ctx_.res.status_code.value_or(500), 500);
-            response.append(status);
-        }
-
-        for(auto& v : ctx_.res.headers)
-        {
-            response.append(v.first);
-            response.append(":");
-            response.append(v.second);
-            response.append("\r\n");
-        }
-
-        static constexpr auto long_bufsize  = std::numeric_limits<long>::max_digits10 + 2;
-        char spec[long_bufsize];
-        content_length_ = decimal_from(ctx_.res.body.size(), spec);//   std::to_string(ctx_.res.body.size());
-
-
-        response.append("Content-Length:");
-        response.append(content_length_);
-        response.append("\r\n");
-
-
-        if (!keep_alive_){
-            response.append( "Connection:close\r\n");
-        }
-
-        date_str_ = date_manager::instance().get_date();
-
-        response.append("Date:");
-        response.append(date_str_);
-        response.append(" GMT\r\n\r\n");
-        response.append(ctx_.res.body);
-
-        do_write();
-    }
-
-    void do_write()
-    {
-#ifdef TEST_DEBUG
-        std::cout << "write called in thread:" << std::this_thread::get_id() << std::endl;
-#endif
-        boost::asio::async_write(socket_, boost::asio::buffer(response)/*buffers_*/, [self = boost::intrusive_ptr(this), this]
-                                 (const boost::system::error_code& ec, size_t) {
-            if (ec) {
-                //destructor will be called in this case
-                return;
-            }
-            last_activity_tp_ = std::chrono::steady_clock::now();
-
-            reset();
-
-            if (keep_alive_) {
-                read();
-            }
-        });
-    }
-
-
-    //intrusive_ptr handling
-
-    inline friend void intrusive_ptr_add_ref(connection* c) noexcept{
+    inline friend void intrusive_ptr_add_ref(connection *c) noexcept {
         ++c->ref_count_;
     }
 
-    inline friend void intrusive_ptr_release(connection* c) noexcept{
-        if(--c->ref_count_ == 0)
+    inline friend void intrusive_ptr_release(connection *c) noexcept {
+        if (--c->ref_count_ == 0)
             delete c;
     }
-private:
 
-    void close(){
+private:
+    //        std::array<char, 4096> buffer{};
+    //        std::pmr::monotonic_buffer_resource mbr{&buffer, 4096,
+    //        memory_resource_manager::instance().pool()};
+
+    std::pmr::memory_resource *pool_{memory_resource_manager::instance().pool()};
+
+    enum class parser_state : uint8_t {
+        Init,
+        Url,
+        HeaderField,
+        HeaderValue,
+        HeadersComplete,
+        Body,
+        TrailerField,
+        TrailerValue,
+        MessageComplete
+    };
+
+    static int on_message_begin(llhttp_t *parser) { return HPE_OK; }
+
+    static int on_message_complete(llhttp_t *llhttp) {
+        auto *self = static_cast<connection *>(llhttp->data);
+
+        // TODO: check if method is not supprted
+        // route and call handler
+
+        self->parser_state_ = parser_state::MessageComplete;
+
+        return self->exec();
+    }
+
+    static int on_chunk_header(llhttp_t *parser) { return HPE_OK; }
+
+    static int on_chunk_complete(llhttp_t *parser) { return HPE_OK; }
+
+    static int on_url(llhttp_t *llhttp, const unsigned char *at, size_t length) {
+        auto *self = static_cast<connection *>(llhttp->data);
+        self->ctx_.raw_url_.insert(self->ctx_.raw_url_.end(), at, at + length);
+
+        return HPE_OK;
+    }
+
+    static int on_body(llhttp_t *llhttp, const unsigned char *at, size_t length) {
+
+        auto *self = static_cast<connection *>(llhttp->data);
+        self->ctx_.req_.body_.insert(self->ctx_.req_.body_.end(), at, at + length);
+        return HPE_OK;
+    }
+
+    static int on_status(llhttp_t *, const unsigned char *at, size_t length) {
+        return HPE_OK;
+    }
+
+    static int on_header_field(llhttp_t *llhttp, const unsigned char *at,
+                               size_t length) {
+        auto *self = static_cast<connection *>(llhttp->data);
+
+        if (self->parser_state_ == parser_state::HeaderValue) {
+            // a field-value pair is ready
+
+            self->ctx_.add_request_header(std::move(self->header_field_),
+                                          std::move(self->header_value_));
+            // clear after move
+            self->header_field_.clear();
+            self->header_value_.clear();
+        }
+
+        self->header_field_.insert(self->header_field_.end(), at, at + length);
+
+        self->parser_state_ = parser_state::HeaderField;
+
+        return HPE_OK;
+    }
+
+    static int on_header_value(llhttp_t *llhttp, const unsigned char *at,
+                               size_t length) {
+        auto *self = static_cast<connection *>(llhttp->data);
+
+        self->header_value_.insert(self->header_value_.end(), at, at + length);
+        self->parser_state_ = parser_state::HeaderValue;
+
+        return HPE_OK;
+    }
+
+    static int on_headers_complete(llhttp_t *llhttp) {
+
+        auto *self = static_cast<connection *>(llhttp->data);
+        // add last header
+        self->ctx_.add_request_header(std::move(self->header_field_),
+                                      std::move(self->header_value_));
+        // clear after move
+        self->header_field_.clear();
+        self->header_value_.clear();
+        self->ctx_.method_ = static_cast<http_method>(llhttp->method);
+
+        return HPE_OK;
+    }
+    static constexpr llhttp_settings_t settings_{
+        nullptr, // on_message_begin,
+        on_url,
+        nullptr, // on_status,
+        on_header_field, on_header_value,     on_headers_complete,
+        on_body,         on_message_complete,
+        nullptr, // on_chunk_header,
+        nullptr, // on_chunk_complete
+    };
+
+    llhttp_errno_t process(const char *buffer, int length) {
+
+        return llhttp_execute(&parser_, buffer, length);
+    }
+
+    int should_keep_alive() { return llhttp_should_keep_alive(&parser_); }
+
+    uint16_t major_version() const { return parser_.http_major; }
+
+    uint16_t minor_version() const { return parser_.http_minor; }
+
+    std::string get_error(llhttp_errno_t err) const {
+        return llhttp_errno_name(err);
+    }
+
+    llhttp_errno_t get_error_code() { return llhttp_get_errno(&parser_); }
+
+    http_method method() { return static_cast<http_method>(parser_.method); }
+
+    http_method to_string(http_method method) {
+        return static_cast<http_method>(parser_.method);
+    }
+
+    void close() {
         if (is_closed_)
             return;
 
@@ -285,6 +289,8 @@ private:
     }
 
     void set_timer(uint32_t seconds) {
+        if constexpr (idle_time_tracking == false)
+            return;
         if (!idle_timeout_)
             return;
 
@@ -293,62 +299,53 @@ private:
             if (ec) {
                 return;
             }
-            auto now =  std::chrono::steady_clock::now();
+            auto now = std::chrono::steady_clock::now();
 
-            if (last_activity_tp_ + std::chrono::seconds(idle_timeout_) < now){
+            if (last_activity_tp_ + std::chrono::seconds(idle_timeout_) > now) {
 
-                auto f = std::chrono::duration_cast<std::chrono::seconds>(now - last_activity_tp_);
+                auto f = std::chrono::duration_cast<std::chrono::seconds>(
+                    (last_activity_tp_ + std::chrono::seconds(idle_timeout_)) - now);
                 set_timer(f.count());
 
-            }
-            else{
+            } else {
                 close();
             }
         });
     }
 
-
     void cancel_timer() {
+        if constexpr (idle_time_tracking == false)
+            return;
         if (!idle_timeout_)
             return;
         boost::system::error_code ec;
         timer_.cancel(ec);
     }
 
-    void reset() {
-        ctx_.reset();
-        in_buffers_.clear();
-        header_size_ = 0;
-    }
+    void reset() { response_.clear(); }
+
+    parser_state parser_state_{parser_state::Init};
+    llhttp_t parser_{};
 
     bool is_closed_{false};
-    bool keep_alive_{false};
-
 
     std::size_t ref_count_{0};
 
-    friend class parser <connection>;
-    parser<connection> parser_{this};
-
     boost::asio::ip::tcp::socket socket_;
-    buffer_state  bs_;
+    std::array<char, read_buffer_size> buffer_;
 
-
-    std::string content_length_;
-    std::string date_str_;
-
-    std::vector<std::unique_ptr<char,buffer_deleter>> in_buffers_;
-
+    uint16_t header_size_{0};
     uint32_t idle_timeout_{0};
     boost::asio::steady_timer timer_;
     std::chrono::time_point<std::chrono::steady_clock> last_activity_tp_;
-    //std::chrono::time_point<std::chrono::steady_clock> idle_time_tp_{std::chrono::seconds(idle_timeout_) + last_activity_tp_};
 
+    std::pmr::string response_{pool_};
+    std::pmr::string content_length_{pool_};
+    std::pmr::string header_field_{pool_};
+    std::pmr::string header_value_{pool_};
 
-    std::string response;
-    uint16_t header_size_{0};
+    context ctx_{&response_, pool_};
+    router router_{};
+    date_manager &date_manager_{date_manager::instance()};
 };
-
-} //namespace scymnus
-
-
+} // namespace scymnus

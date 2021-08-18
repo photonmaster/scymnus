@@ -4,8 +4,7 @@
 namespace scymnus {
 namespace utils {
 
-
-//REF: https://github.com/envoyproxy (envoy proxy)
+// REF: https://github.com/envoyproxy (envoy proxy)
 
 constexpr std::string_view whitespace{" \t\f\v\n\r"};
 
@@ -29,19 +28,20 @@ inline std::string_view rtrim(std::string_view source) {
     return source;
 }
 
-inline std::string_view trim(std::string_view source) { return ltrim(rtrim(source)); }
+inline std::string_view trim(std::string_view source) {
+    return ltrim(rtrim(source));
+}
 
+// REF: https://www.bfilipek.com/2018/07/string-view-perf.html (based on JFT's
+// comment)
 
-
-
-//REF: https://www.bfilipek.com/2018/07/string-view-perf.html (based on JFT's comment)
-
-[[nodiscard]] inline std::vector<std::string_view> split(std::string_view sv, std::string_view delimeter = "/")
-{
+[[nodiscard]] inline std::vector<std::string_view>
+split(std::string_view sv, std::string_view delimeter = "/") {
     std::vector<std::string_view> output;
     for (auto first = sv.data(), second = sv.data(), last = first + sv.size();
          second != last && first != last; first = second + 1) {
-        second = std::find_first_of(first, last, std::cbegin(delimeter), std::cend(delimeter));
+        second = std::find_first_of(first, last, std::cbegin(delimeter),
+                                    std::cend(delimeter));
 
         if (first != second)
             output.emplace_back(first, second - first);
@@ -50,6 +50,5 @@ inline std::string_view trim(std::string_view source) { return ltrim(rtrim(sourc
     return output;
 }
 
-
-} //namespace utils
-} //namespace scymnus
+} // namespace utils
+} // namespace scymnus

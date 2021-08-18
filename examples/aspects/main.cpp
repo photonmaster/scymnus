@@ -19,7 +19,7 @@ using PointModel = model<
     >;
 
 
-///the follwing map is our data source:
+///the following map is our data source:
 
 std::map<int, PointModel> points{};
 
@@ -63,7 +63,7 @@ struct validate_aspect : aspect_base<"validate"> {
             using properties = std::remove_cvref_t<decltype(field.properties)>;
             if constexpr(scymnus::has_type<typename constraints::min<int>, properties>::value){
 
-                 auto v = std::get<constraints::min<int>>(field.properties).value;
+                auto v = std::get<constraints::min<int>>(field.properties).value;
 
                 if (value < v)
                     throw std::runtime_error{"field value is less than minimum value allowed"};
@@ -76,12 +76,14 @@ struct validate_aspect : aspect_base<"validate"> {
     {
         //validate
         try {
-        for_each(body.get(),[this](auto&& f, auto& v) {
-            validate(f,v);
-        });
+            for_each(body.get(),[this](auto&& f, auto& v) {
+                validate(f,v);
+            });
         }
         catch(std::runtime_error& exp) {
-            return response{status<500>, std::string(exp.what()),  ctx};
+            std::cout << "in validate aspect" << std::endl;
+
+            return ctx.write_as<http_content_type::JSON>(status<500>, std::string(exp.what()));
         }
 
         return {};
@@ -120,7 +122,7 @@ struct check_operator_aspect : aspect_base<"check_operator", hook_type::before> 
     {
         auto v = oper.get();
         if (v != 1 && v != 2){
-            return response{status<500>, std::string{"Given operator is not supprted"},  ctx};
+            return ctx.write_as<http_content_type::JSON>(status<500>, std::string{"Given operator is not supported"});
         }
         return {};
     }
@@ -132,7 +134,7 @@ struct check_operator_aspect : aspect_base<"check_operator", hook_type::before> 
 struct log_request_aspect : aspect_base<"log_url", hook_type::before> {
     sink<"log_url"> operator()(context& ctx)
     {
-        std::cout << "URL IS: " << ctx.raw_url << std::endl;
+        std::cout << "url is: " << ctx.raw_url() << std::endl;
         return {};
     }
 };
@@ -140,9 +142,9 @@ struct log_request_aspect : aspect_base<"log_url", hook_type::before> {
 /// Let's define an after aspect that will log the response:
 
 struct log_response_aspect : aspect_base<"log_response", hook_type::after> {
-    sink<"log_response"> operator()(context& ctx)
+    sink<"log_response"> operator()(const context& ctx)
     {
-        std::cout << "RESPONSE IS: " << ctx.res.body << std::endl;
+        std::cout << "payload is: " << ctx.response_body() << std::endl;
         return {};
     }
 };
@@ -153,32 +155,20 @@ struct log_response_aspect : aspect_base<"log_response", hook_type::after> {
 
 
 int main(){
-    /// let's add some
-    api_manager::instance().name("Your name");
-    api_manager::instance().email("your@email.com");
-    api_manager::instance().host("127.0.0.1:9090");
-    api_manager::instance().add_consume_type("aplication/json");
-    api_manager::instance().add_produce_type("aplication/json");
-    api_manager::instance().add_scheme("http");
-    api_manager::instance().swagger_path("/swagger_resources/index.html");
-
-
     auto& app = scymnus::app::instance();
-
 
     app.route([](body_param<"body", PointModel> body, context& ctx) -> response_for<http_method::POST, "/points">
            {
+               std::cout << "main handler called" << std::endl;
                auto p = body.get();
                p.get<"id">() = points.size(); //code is not thread safe
-
                points[points.size()] = p;
-               return response{status<200>, p, ctx};
+               return ctx.write(status<200>, p);
            },
            log_request_aspect{},
            validate_aspect<PointModel>{},
            check_operator_aspect{},
-           log_response_aspect{}
-           )
+           log_response_aspect{} )
         .summary("Create a point")
         .description("Create a point resource. The id will be returned in the response")
         .tag("points");
@@ -215,17 +205,17 @@ int main(){
 
 
     app.route([](path_param<"id", int> id, context& ctx)
-                  -> response_for<http_method::GET, "/points/{id}">
-              {
-                  if (points.count(id.get()))
-                      return response{status<200>, points[id.get()], ctx};
-                  else
-                      return response{status<404>, std::string("Point not found"), ctx};
+               -> response_for<http_method::GET, "/points/{id}">
+           {
+               if (points.count(id.get()))
+                   return ctx.write(status<200>, points[id.get()]);
+               else
+                   return ctx.write_as<http_content_type::JSON>(status<404>, std::string{"Point not found"});
 
-              },
-        log_request_aspect{},
-        check_operator_aspect{},
-        log_response_aspect{})
+           },
+           log_request_aspect{},
+           check_operator_aspect{},
+           log_response_aspect{})
 
         .summary("get a point")
         .description("retrieve a point by id")
@@ -241,14 +231,14 @@ int main(){
     ///
 
     app.route([](path_param<"id", int> id, context& ctx)
-                  -> response_for<http_method::DELETE, "/points/{id}">
-              {
-                  auto count = points.erase(id.get());
+               -> response_for<http_method::DELETE, "/points/{id}">
+           {
+               auto count = points.erase(id.get());
 
-                  if (count)
-                      return response{status<204>, ctx};
-                  else
-                      return response{status<404>, std::string("Point not found"), ctx};
+               if (count)
+                   return ctx.write(status<204>);
+               else
+                   return ctx.write_as<http_content_type::JSON>(status<404>, std::string{"Point not found"});
 
            },
            log_request_aspect{},
@@ -269,7 +259,7 @@ int main(){
                   for(auto element : points)
                       data.push_back(element.second);
 
-                  return response(status<200>,data, ctx);
+                  return ctx.write(status<200>,data);
 
               })
         .summary("get all points")
@@ -277,12 +267,18 @@ int main(){
         .tag("points");
 
 
+    app.route([](body_param<"body", std::string> body,context& ctx)->response_for<http_method::POST, "/echo"> {
+
+        std::string_view payload = ctx.request_body();
+        return ctx.write_as<http_content_type::JSON>(status<200>,payload);
+    });
+
 
     /// Finally we are starting the webservice
-    /// swagger is accessible here: http://10.0.2.15:9090/api-doc
+    /// swagger is accessible here: http://127.0.0.1:8080/api-doc
 
 
-    app.listen("127.0.0.1", 9090);
+    app.listen();
     app.run();
 }
 
