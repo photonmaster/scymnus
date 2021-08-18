@@ -50,13 +50,8 @@ Finally we are starting the webservice:
 ```
 }
 
-
-
-
-
-
-
 complete code:
+
 ```cpp
 #include "server/app.hpp"
 
@@ -86,6 +81,10 @@ For serving the swagger documentation of our webservice a folder named
 The `swagger_resources` folder should contain all the files in the `external/swagger/dist` directory of the source tree.  
 
 Swagger is accessible here: http://127.0.0.1:8080/api-doc
+
+This is how  `/sum/{x}/{y}' endpoint looks:
+![swagger sum screenshot](https://user-images.githubusercontent.com/12844823/129976580-4434960a-9f57-429a6-9625-f8967f1a347d.png)
+
 
 ##### Query and header parameters
 
