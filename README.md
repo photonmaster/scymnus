@@ -179,7 +179,7 @@ For each field in a model, meta-properties can be defined.
 A model itself can also have meta-properties.
 Two properties are avaliable at model level: `name` and `description`
 
-Each field can have each own properties. The following field properties can be used:
+Each field can have its own properties. The following field properties can be used:
 - description
 - min
 - max
