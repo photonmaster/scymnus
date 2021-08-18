@@ -10,7 +10,6 @@
 #include "date_manager.hpp"
 #include "external/decimal_from.hpp"
 #include "external/http_parser/llhttp.h"
-#include "parser.hpp"
 #include "server/memory_resource_manager.hpp"
 #include "server/router.hpp"
 
