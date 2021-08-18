@@ -6,7 +6,7 @@ It tries to solve the lack of reflection in c++ by using c++20 feutures
 
 **This is a work in progress**
 
-> *Scymnus* is an ancient greek word for lion cub
+> *Scymnus* is an ancient greek word for a lion cub
 ## Building
 For building *Scymnus* the following are needed:
 
