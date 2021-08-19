@@ -252,7 +252,8 @@ struct context {
     }
 
     void write_file(const std::filesystem::path &p) {
-        if (!p.has_filename()) {
+        namespace fs = std::filesystem;
+        if (!p.has_filename() || !fs::exists(p)) {
             write(status<404>);
             return;
         }
